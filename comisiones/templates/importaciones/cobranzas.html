@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Importar Cobranzas</h2>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="archivo" required>
+    <button type="submit">Importar</button>
+</form>
+
+{% if resultado %}
+    <div style="margin-top:20px;">
+        <p><strong>Insertadas:</strong> {{ resultado.insertadas }}</p>
+        <p><strong>Omitidas:</strong> {{ resultado.omitidas }}</p>
+        <p><strong>No encontradas:</strong> {{ resultado.no_encontradas }}</p>
+    </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>
+
+{% if modo == "nuevo" %}
+Nuevo parámetro
+{% else %}
+Editar parámetro
+{% endif %}
+
+</h2>
+
+<form method="post">
+
+{% csrf_token %}
+
+<table>
+
+<tr>
+<td>Código:</td>
+<td>
+
+{% if modo == "editar" %}
+{{ parametro.codigo }}
+{% else %}
+<input type="text" name="codigo" required>
+{% endif %}
+
+</td>
+</tr>
+
+<tr>
+<td>Valor:</td>
+<td>
+<input type="text" name="valor"
+value="{{ parametro.valor|default:'' }}" required>
+</td>
+</tr>
+
+<tr>
+<td>Descripción:</td>
+<td>
+<input type="text" name="descripcion"
+value="{{ parametro.descripcion|default:'' }}">
+</td>
+</tr>
+
+</table>
+
+<br>
+
+<button type="submit">Guardar</button>
+
+<a href="{% url 'parametros' %}">Cancelar</a>
+
+</form>
+
+{% endblock %}

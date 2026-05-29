@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Nuevo parámetro</h2>
+
+<form method="post">
+
+{% csrf_token %}
+
+<label>Código</label><br>
+<input type="text" name="codigo" required><br><br>
+
+<label>Valor</label><br>
+<input type="text" name="valor"><br><br>
+
+<label>Descripción</label><br>
+<input type="text" name="descripcion"><br><br>
+
+<button type="submit">Guardar</button>
+
+</form>
+
+{% endblock %}

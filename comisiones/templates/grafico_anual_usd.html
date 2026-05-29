@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="margin-bottom:20px;">Facturación anual en USD vs Dólar Promedio</h2>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<canvas id="grafico" height="100"></canvas>
+
+<script>
+const ctx = document.getElementById('grafico');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ anios|safe }},
+        datasets: [
+            {
+                label: 'Facturación USD',
+                data: {{ valores_usd|safe }},
+                borderWidth: 3,
+                borderColor: '#1f77b4',
+                backgroundColor: 'rgba(31,119,180,0.1)',
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                tension: 0.2,
+                yAxisID: 'y'
+            },
+            {
+                label: 'Dólar Promedio',
+                data: {{ valores_dolar|safe }},
+                borderWidth: 2,
+                borderColor: '#ff7f0e',
+                borderDash: [6, 6],
+                pointRadius: 4,
+                tension: 0.2,
+                yAxisID: 'y1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let value = context.raw;
+                        return context.dataset.label + ': USD ' +
+                               value.toLocaleString('es-AR');
+                    }
+                }
+            },
+            legend: {
+                labels: {
+                    font: { size: 14 }
+                }
+            }
+        },
+        scales: {
+            y: {
+                position: 'left',
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString('es-AR');
+                    }
+                }
+            },
+            y1: {
+                position: 'right',
+                grid: {
+                    drawOnChartArea: false
+                },
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString('es-AR');
+                    }
+                }
+            }
+        }
+    },
+    plugins: [{
+        id: 'labelsOnPoints',
+        afterDatasetsDraw(chart) {
+            const {ctx} = chart;
+            chart.data.datasets.forEach((dataset, i) => {
+                if (dataset.label !== 'Facturación USD') return;
+
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((point, index) => {
+                    const value = dataset.data[index];
+                    ctx.fillStyle = '#000';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(
+                        value.toLocaleString('es-AR'),
+                        point.x,
+                        point.y - 10
+                    );
+                });
+            });
+        }
+    }]
+});
+</script>
+{% endblock %}

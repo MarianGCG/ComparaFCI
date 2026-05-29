@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% block content %}
+
+<div class="titulo-grafico">
+    Totales por Período
+</div>
+
+
+<div class="barra-opciones">
+
+<form method="get"
+      style="display:flex; gap:12px; align-items:center;">
+
+    Año:
+
+    <input type="text"
+           name="anio"
+           value="{{ anio|default:'' }}"
+           style="width:80px;">
+
+    <button type="submit"
+        style="padding:4px 10px;
+               background:#2c78be;
+               color:white;
+               border:none;
+               border-radius:4px;">
+        Filtrar
+    </button>
+
+</form>
+
+</div>
+
+
+<div class="layout-doble">
+<div class="contenedor-tabla-saldos">
+
+<table class="tabla-comprobantes">
+
+<tr>
+
+<th onclick="ordenar('periodo')" style="width:50px;">
+    Periodo 
+    <span class="flechas">     
+        {% if request.GET.orden == 'periodo' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>    
+</th>
+
+<th onclick="ordenar('fact')" style="width:60px;">
+    Fact 
+    <span class="flechas">     
+        {% if request.GET.orden == 'fact' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>    
+</th>
+
+<th onclick="ordenar('cred')" style="width:60px;">
+    Cred 
+    <span class="flechas"> 
+        {% if request.GET.orden == 'cred' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>
+</th>
+
+
+
+<th onclick="ordenar('neto')" style="width:100px;">
+    Neto 
+    <span class="flechas">    
+        {% if request.GET.orden == 'neto' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>
+
+</th>
+
+<th style="width:100px;">IVA</th>
+
+<th onclick="ordenar('total')" style="width:100px;">
+    Total 
+    <span class="flechas">     
+        {% if request.GET.orden == 'total' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>    
+</th>
+
+<th onclick="ordenar('cobrado')" style="width:100px;">
+    Cobrado 
+    <span class="flechas">     
+        {% if request.GET.orden == 'cobrado' %}
+            {% if request.GET.dir == 'asc' %}▲{% else %}▼{% endif %}
+        {% else %}
+            ▲▼
+        {% endif %}
+    </span>    
+</th>
+
+<th style="width:100px;">
+    Neto usd
+</th>
+
+
+
+
+</tr>
+
+{% for s in saldos %}
+
+<tr>
+
+    <td>
+        {{ s.periodo_anio|unlocalize }}-
+        {{ s.periodo_mes|stringformat:"02d" }}
+    </td>
+
+    <td style="text-align:center;">
+        {{ s.cant_facturas }}
+    </td>
+
+    <td style="text-align:center;">
+        {{ s.cant_creditos }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ s.subtotal|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ s.sum_iva|default:0|localize }}
+    </td>
+
+
+    <td style="text-align:right;">
+        ${{ s.sum_total|default:0|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ s.sum_cobrado|default:0|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        {{ s.ST_usd|floatformat:0|localize }} 
+    </td>
+
+
+</tr>
+
+{% endfor %}
+
+
+
+<tr style="font-weight:bold; background-color:#eef3f8;">
+
+    <td>TOTAL GENERAL</td>
+
+    <td style="text-align:center;">
+        {{ totales.total_facturas }}
+    </td>
+
+    <td style="text-align:center;">
+        {{ totales.total_creditos }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ totales.subtotal|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ totales.sum_iva|default:0|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ totales.sum_total|default:0|localize }}
+    </td>
+
+    <td style="text-align:right;">
+        ${{ totales.sum_cobrado|default:0|localize }}
+    </td>
+    
+    <td class="numero">
+        {{ totales.total_usd|floatformat:0|localize }}
+    </td>
+
+
+</tr>
+
+
+</table>
+
+</div>
+</div>
+
+<p style="margin-top:10px; font-size:13px; color:#444;">
+    <strong>Cantidad de períodos:</strong>
+    {{ saldos|length }}
+</p>
+
+
+<script>
+
+function ordenar(campo){
+
+    const url = new URL(window.location.href)
+
+    let actual = url.searchParams.get("orden")
+    let direccion = url.searchParams.get("dir") || "asc"
+
+    if(actual === campo){
+        direccion = direccion === "asc" ? "desc" : "asc"
+    }else{
+        direccion = "asc"
+    }
+
+    url.searchParams.set("orden", campo)
+    url.searchParams.set("dir", direccion)
+
+    window.location.href = url.toString()
+}
+</script>
+
+
+{% endblock %}

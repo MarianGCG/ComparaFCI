@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% block content %}
+
+<div class="titulo-grafico">
+    Facturación trimestral en USD
+</div>
+
+
+<style>
+
+.barra-controles {
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:6px;
+    font-size:14px;
+}
+
+.grupo {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding-right:14px;
+    border-right:1px solid #ddd;
+}
+
+.grupo:last-child {
+    border-right:none;
+}
+
+.contenedor-grafico {
+    height: calc(100vh - 140px);
+    width:100%;
+}
+
+</style>
+
+
+
+<form method="get" class="barra-controles">
+
+
+    <div class="grupo">
+
+        <b>Top:</b>
+
+        <input type="number"
+               name="top"
+               min="1"
+               value="{{ top_n }}"
+               style="width:55px;">
+
+    </div>
+
+
+    <div class="grupo">
+
+        <b>Tope %:</b>
+
+        <input type="number"
+               step="0.1"
+               min="0"
+               max="100"
+               name="tope"
+               value="{{ tope|unlocalize }}"
+               style="width:65px;">
+
+    </div>
+
+
+
+    <div class="grupo">
+
+        <b>Años:</b>
+
+        {% for anio in anios_disponibles %}
+
+            <label>
+
+                <input type="checkbox"
+                       name="anio"
+                       value="{{ anio|unlocalize }}"
+                       {% if anio in anios_seleccionados %}checked{% endif %}>
+
+                {{ anio|unlocalize }}
+
+            </label>
+
+        {% endfor %}
+
+    </div>
+
+
+
+    <div class="grupo">
+
+        <button type="submit"
+                style="padding:3px 10px;
+                       background:#2c78be;
+                       color:white;
+                       border:none;
+                       border-radius:4px;
+                       cursor:pointer;">
+
+            Actualizar
+
+        </button>
+
+    </div>
+
+
+</form>
+
+
+
+
+<div class="contenedor-grafico">
+    <canvas id="graficos22"></canvas>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<script>
+
+
+const lineasCambioAnio = {
+
+    id: 'lineasCambioAnio',
+
+    afterDraw(chart) {
+
+        const {ctx, chartArea: {top, bottom}, scales: {x}} = chart;
+
+        ctx.save();
+
+        const labels = chart.data.labels;
+
+        for (let i = 1; i < labels.length; i++) {
+
+            const anioActual = labels[i].split('-')[0];
+            const anioAnterior = labels[i-1].split('-')[0];
+
+            if (anioActual !== anioAnterior) {
+
+                const xActual = x.getPixelForValue(i);
+                const xAnterior = x.getPixelForValue(i-1);
+
+                const xPos = (xActual + xAnterior) / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(xPos, top);
+                ctx.lineTo(xPos, bottom);
+
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#888';
+                ctx.setLineDash([6,6]);
+                ctx.stroke();
+
+            }
+        }
+
+        ctx.restore();
+    }
+};
+
+
+
+Chart.register(ChartDataLabels, lineasCambioAnio);
+
+
+
+const labels = {{ labels|safe }};
+const datasets = {{ datasets|safe }};
+const totales = {{ totales|safe }};
+
+
+
+new Chart(document.getElementById('graficos22'), {
+
+    type: 'bar',
+
+    data: {
+        labels: labels,
+        datasets: datasets
+    },
+
+    options: {
+
+        maintainAspectRatio: false,
+        responsive: true,
+
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true }
+        },
+
+        plugins: {
+
+            legend: { display:false },
+
+            datalabels: {
+
+                color: 'white',
+
+                font: {
+                    weight:'bold',
+                    size:11
+                },
+
+                formatter: function(value, context) {
+
+                    if (!value) return "";
+
+                    const nombre =
+                        context.dataset.labels[context.dataIndex];
+
+                    const total =
+                        totales[context.dataIndex];
+
+                    const pct =
+                        Math.round(value / total * 100);
+
+                    return pct + "% " + nombre;
+                }
+            }
+        }
+    }
+});
+
+
+</script>
+
+{% endblock %}

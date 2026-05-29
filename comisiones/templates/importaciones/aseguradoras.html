@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block content %}
+
+<h2 style="margin-bottom:20px;">Aseguradoras</h2>
+
+<!-- ========================== -->
+<!-- 📥 IMPORTAR EXCEL -->
+<!-- ========================== -->
+<div style="background:white; padding:15px; margin-bottom:25px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.05);">
+
+    <form method="post" enctype="multipart/form-data" style="display:flex; gap:15px; align-items:center;">
+        {% csrf_token %}
+        {{ form.archivo }}
+
+        <button type="submit"
+                style="padding:8px 16px; background:#174a7c; color:white; border:none; border-radius:6px; cursor:pointer;">
+            Importar
+        </button>
+    </form>
+
+    {% if resultado %}
+        <div style="margin-top:10px; font-weight:bold; color:green;">
+            {{ resultado }}
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- ========================== -->
+<!-- 🔎 FILTROS -->
+<!-- ========================== -->
+<form method="get"
+      style="display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap; align-items:end;">
+
+    <div>
+        <label>Nombre</label><br>
+        <input type="text"
+               name="nombre"
+               value="{{ request.GET.nombre }}"
+               style="padding:6px;">
+    </div>
+
+    <div>
+        <label>Estado</label><br>
+        <select name="estado" style="padding:6px;">
+            <option value="">Todas</option>
+            <option value="activas"
+                {% if request.GET.estado == "activas" %}selected{% endif %}>
+                Activas
+            </option>
+            <option value="inactivas"
+                {% if request.GET.estado == "inactivas" %}selected{% endif %}>
+                Inactivas
+            </option>
+        </select>
+    </div>
+
+    <!-- NUEVO: ORDENAR -->
+    <div>
+        <label>Ordenar por</label><br>
+        <select name="ordenar" style="padding:6px;">
+            <option value="nombre" {% if ordenar_actual == "nombre" %}selected{% endif %}>Nombre</option>
+            <option value="cuit" {% if ordenar_actual == "cuit" %}selected{% endif %}>CUIT</option>
+            <option value="tipo_factura" {% if ordenar_actual == "tipo_factura" %}selected{% endif %}>Tipo</option>
+            <option value="email" {% if ordenar_actual == "email" %}selected{% endif %}>Email</option>
+            <option value="codigo_interno" {% if ordenar_actual == "codigo_interno" %}selected{% endif %}>Código</option>
+            <option value="grupo" {% if ordenar_actual == "grupo" %}selected{% endif %}>Grupo</option>
+            <option value="color" {% if ordenar_actual == "color" %}selected{% endif %}>Color</option>
+            <option value="activa" {% if ordenar_actual == "activa" %}selected{% endif %}>Estado</option>
+        </select>
+    </div>
+
+    <button type="submit"
+            style="padding:8px 14px; background:#174a7c; color:white; border:none; border-radius:6px;">
+        Filtrar
+    </button>
+
+    <a href="{% url 'aseguradoras' %}"
+       style="padding:8px 14px; background:#999; color:white; border-radius:6px; text-decoration:none;">
+        Limpiar
+    </a>
+
+</form>
+
+<!-- ========================== -->
+<!-- 📋 TABLA -->
+<!-- ========================== -->
+<table style="width:100%; border-collapse:collapse; background:white; font-size:14px;">
+
+    <thead style="background:#174a7c; color:white;">
+        <tr>
+            <th style="padding:8px;">Nombre</th>
+            <th>CUIT</th>
+            <th>Tipo</th>
+            <th>Email</th>
+            <th>Código</th>
+            <th>Grupo</th>
+            <th>Estado</th>
+            <th>Color</th>
+            <th>IVA</th>     
+            <th>Invierte signo</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for a in aseguradoras %}
+        <tr style="border-bottom:1px solid #eee;">
+
+            <td style="padding:8px;">{{ a.nombre }}</td>
+            <td>{{ a.cuit }}</td>
+            <td style="text-align:center;">{{ a.tipo_factura }}</td>
+            <td>{{ a.email }}</td>
+            <td style="text-align:center;">{{ a.codigo_interno }}</td>
+
+            <!-- GRUPO EDITABLE -->
+            <td style="text-align:center;">
+
+                <form method="post"
+                      action="{% url 'actualizar_grupo_aseguradora' a.id %}"
+                      style="margin:0;">
+
+                    {% csrf_token %}
+
+                    <input type="text"
+                           name="grupo"
+                           value="{{ a.grupo|default:'' }}"
+                           maxlength="2"
+                           style="width:35px; text-align:center;"
+                           onchange="this.form.submit()">
+
+                </form>
+
+            </td>
+
+            <td style="text-align:center;">
+                {% if a.activa %}  
+                    <span style="color:green; font-weight:bold;">Activa</span>
+                {% else %}
+                    <span style="color:red; font-weight:bold;">Inactiva</span>
+                {% endif %}
+            </td>
+
+            <!-- COLOR -->
+            <td style="text-align:center;">
+
+                <form method="post"
+                      action="{% url 'activar_aseguradora' a.id %}"
+                      style="margin:0;">
+
+                    {% csrf_token %}
+
+                    <input type="color"
+                           name="color"
+                           value="{{ a.color|default:'#3366cc' }}"
+                           onchange="this.form.submit()"
+                           style="width:40px;height:28px;border:none;cursor:pointer;">
+
+                </form>
+
+            </td>
+
+
+            <td style="text-align:center;">
+
+                <form method="post"
+                    action="{% url 'actualizar_iva_aseguradora' a.id %}"
+                    style="margin:0;">
+
+                    {% csrf_token %}
+
+                    <select name="incluye_iva"
+                            onchange="this.form.submit()"
+                            style="padding:4px;">
+
+                        <option value="S" {% if a.incluye_iva == "S" %}selected{% endif %}>S</option>
+                        <option value="N" {% if a.incluye_iva == "N" %}selected{% endif %}>N</option>
+
+                    </select>
+
+                </form>
+
+            </td>
+
+            <td>
+                <input type="checkbox"
+                    onchange="window.location.href='?toggle_signo={{a.id}}' "
+                    {% if a.invierte_signo %}checked{% endif %}>
+            </td>
+
+
+            <!-- ACCION -->
+            <td style="text-align:center;">
+
+                {% if a.activa %}
+                    <a href="{% url 'eliminar_aseguradora' a.id %}"
+                       style="padding:6px 10px; background:#c0392b; color:white; border-radius:6px; text-decoration:none;">
+                        Desactivar
+                    </a>
+                {% else %}
+                    <a href="{% url 'activar_aseguradora' a.id %}"
+                       style="padding:6px 10px; background:#27ae60; color:white; border-radius:6px; text-decoration:none;">
+                        Activar
+                    </a>
+                {% endif %}
+
+            </td>
+
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="10" style="padding:15px; text-align:center;">
+                No hay aseguradoras registradas
+            </td>
+        </tr>
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+<p style="margin-top:12px;">
+    <strong>Total:</strong> {{ aseguradoras|length }}
+</p>
+
+{% endblock %}

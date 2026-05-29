@@ -1,0 +1,716 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>REGLAS DE COMISIÓN</h2>
+
+<div class="barra-importador">
+
+<form method="post" enctype="multipart/form-data" class="form-importador">
+
+{% csrf_token %}
+
+<label><b>Aseguradora</b></label>
+
+<select name="aseguradora_id">
+{% for a in aseguradoras %}
+<option value="{{a.id}}">{{a.nombre}}</option>
+{% endfor %}
+</select>
+
+<label class="label-archivo">Archivo Excel</label>
+
+
+<input type="file" name="archivo">
+
+<button type="submit" class="boton-importar">
+Importar
+</button>
+
+{% if resultado %}
+<span class="resultado-importacion">
+✔ {{resultado|cut:"reglas "}}
+&nbsp;|&nbsp;
+Inicial = {{cantidad_inicial}} 
+&nbsp;|&nbsp;
+Actual = {{cantidad_actual}}
+</span>
+
+
+
+{% endif %}
+
+</form>
+
+</div>
+
+
+<style>
+
+body{
+    background:#f4f6f9;
+}
+
+
+
+.barra-importador{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:white;
+    padding:12px;
+    border-radius:6px;
+    
+    margin-bottom:15px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+}
+
+
+
+
+.tabla-listado{
+width:900px;
+border-collapse:collapse;
+font-size:12px;
+}
+
+.tabla-listado th,
+.tabla-listado td{
+border:1px solid #cfcfcf;
+padding:4px 6px;
+}
+
+.tabla-listado th{
+background:#2f5482;
+color:white;
+cursor:pointer;
+}
+
+.tabla-listado tbody tr:hover{
+background:#f9f9f9;
+}
+
+.boton-nuevo{
+margin-bottom:10px;
+}
+
+input{
+width:90%;
+}
+
+.boton-importar{
+background:#2f5482;
+color:white;
+border:none;
+padding:6px 14px;
+border-radius:4px;
+cursor:pointer;
+margin-left:10px;
+}
+
+.boton-importar:hover{
+background:#244368;
+}
+
+.icono{
+cursor:pointer;
+font-size:16px;
+margin-right:6px;
+}
+
+
+.boton-sistema{
+background:#f4f4f4;
+border:1px solid #bfbfbf;
+padding:5px 10px;
+border-radius:3px;
+cursor:pointer;
+margin-bottom:10px;
+}
+
+
+.boton-principal{
+    background:#2f5482;
+    color:white;
+    border:none;
+    padding:6px 14px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+}
+
+.boton-principal:hover{
+    background:#244368;
+}
+
+
+.form-importador{
+
+display:flex;
+align-items:center;
+gap:12px;
+
+}
+
+.label-archivo{
+white-space:nowrap;
+font-size:13px;
+}
+
+
+
+
+.resultado-importacion{
+    margin-left:15px;
+    color:#1f7a2f;
+    font-weight:bold;
+    background:#e8f6ec;
+    padding:4px 10px;
+    border-radius:6px;
+    white-space:nowrap;
+}
+
+
+
+
+
+.acciones{
+display:flex;
+gap:6px;
+align-items:center;
+}
+
+.btn-accion{
+padding:3px 6px;
+border:1px solid #bfbfbf;
+background:#f4f4f4;
+border-radius:3px;
+cursor:pointer;
+font-size:14px;
+}
+
+.icono-editar{
+cursor:pointer;
+font-size:18px;
+margin-right:6px;
+}
+
+.icono-eliminar{
+cursor:pointer;
+font-size:20px;
+}
+.arbol {
+    font-family: Arial;
+    font-size:13px;
+    margin-top:10px;
+}
+
+/* cada nodo */
+.nodo {
+    margin-top:4px;
+}
+
+/* línea horizontal */
+.nodo::before {
+    content: "";
+    display:inline-block;
+    width:10px;
+    border-bottom:1px solid #aaa;
+    margin-right:5px;
+    vertical-align:middle;
+}
+
+/* niveles */
+.nivel1 {
+    font-weight:bold;
+    background:#f4f6f9;
+    padding:4px 6px;
+    border-radius:4px;
+}
+
+.nivel2 { margin-left:20px; background:#fafafa;}
+.nivel3 { margin-left:40px; color:#444;}
+
+.nodo:hover{
+    background:#eef3f9;
+    cursor:pointer;
+}
+
+
+/* hijos con rama vertical */
+.hijos {
+    display:none;   /* 👈 clave */
+    border-left:1px solid #bbb;
+    padding-left:10px;
+}
+
+/* filas finales */
+.fila{
+    display:grid;
+    grid-template-columns: 120px 180px 50px 100px 90px 70px 130px;
+    gap:4px;
+    align-items:center;
+    font-size:13px;
+    padding:2px 4px;
+}
+
+.arbol-col{
+    padding-left:50px;   /* base */
+}
+
+.nivel1 .arbol-col{ padding-left:10px; }
+.nivel2 .arbol-col{ padding-left:30px; }
+.nivel3 .arbol-col{ padding-left:50px; }
+
+
+.contenedor-blanco{
+    background:white;
+    padding:15px;
+    border-radius:6px;
+    width:900px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+}
+
+
+.panel-edicion{
+    position:fixed;
+    top:0;
+    right:0;
+    width:360px;
+    height:100%;
+    background:white;
+    box-shadow:-4px 0 12px rgba(0,0,0,0.2);
+    padding:20px;
+    z-index:9999;
+    overflow:auto;
+
+    transform:translateX(100%);   /* 👈 OCULTO */
+    transition:transform 0.3s ease;
+}
+
+
+.panel-edicion.abierto{
+    transform:translateX(0);      /* 👈 VISIBLE */
+}
+
+.panel-edicion h3{
+    margin-top:0;
+    margin-bottom:15px;
+    border-bottom:1px solid #ddd;
+    padding-bottom:8px;
+}
+
+.panel-edicion label{
+    display:block;
+    margin-top:10px;
+    font-weight:bold;
+    font-size:13px;
+}
+
+.panel-edicion input{
+    width:100%;
+    padding:6px;
+    border:1px solid #ccc;
+    border-radius:4px;
+    margin-top:3px;
+    font-size:13px;
+}
+
+.panel-edicion button{
+    margin-top:15px;
+    padding:6px 12px;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+}
+
+.panel-edicion button:first-of-type{
+    background:#2f5482;
+    color:white;
+}
+
+.panel-edicion button:first-of-type:hover{
+    background:#244368;
+}
+
+.panel-edicion button:last-of-type{
+    background:#f4f4f4;
+    border:1px solid #ccc;
+}
+
+
+
+.titulo-arbol{
+    background:#174a7c;
+    color:white;
+    font-weight:600;
+    font-size:13px;
+    border-radius:6px;
+    padding:6px 10px;
+    margin:10px 0;
+}
+
+.titulo-arbol{
+    display:grid;
+    grid-template-columns: 120px 180px 90px 70px 110px 70px 90px 90px;
+    gap:10px;
+}
+
+
+
+.grid-reglas{
+    display:grid;
+    grid-template-columns:  300px 90px 70px 110px 70px 90px 90px;
+    gap:10px;
+    align-items:center;
+}
+
+.boton-secundario{
+    background:#6c757d;
+    color:white;
+    border:none;
+    padding:6px 14px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+    margin-left:10px;
+}
+
+.boton-secundario:hover{
+    background:#5a6268;
+}
+
+</style>
+
+<div class="contenedor-blanco">
+
+<button type="button" onclick="nuevoRegistro()" class="boton-principal">
+➕ Nueva regla
+</button>
+
+
+
+<div class="titulo-arbol grid-reglas">
+    <div>Concepto</div>   <!-- 👈 antes Aseguradora/Ramo -->
+    <div>Moneda</div>
+    <div>Nivel</div>
+    <div>Rango</div>
+    <div>Año</div>
+    <div>Comisión</div>
+    <div>Base</div>
+</div>
+
+
+
+<div class="arbol">
+
+{% for aseg, productos in arbol.items %}
+
+
+<div class="nivel1 nodo" onclick="toggle(this)">
+    ▶ {{ aseg }}
+</div>
+
+<div class="hijos">
+
+    {% for prod, monedas in productos.items %}
+
+    <div class="nivel2 nodo" onclick="toggle(this)">
+        ▶ {{ prod }}
+    </div>
+
+    <div class="hijos">
+  
+
+        {% for moneda, reglas in monedas.items %}
+        <div class="hijos" style="display:block;">
+
+            {% for r in reglas %}
+                <div class="fila grid-reglas">
+
+                    <!-- 🌳 ARBOL -->
+                    <div class="arbol-col">
+                        {{r.producto}}
+                    </div>
+
+                    <!-- 📊 DATOS -->
+                    <div>{{r.moneda}}</div>
+                    <div class="numero">{{r.nivel}}</div>
+                    <div>{{r.rango}}</div>
+                    <div class="numero">{{r.anio_poliza|default:"-"}}</div>
+
+                    <div class="numero">
+                        {{r.porcentaje}}%
+                        <span onclick="event.stopPropagation(); eliminar('{{r.id}}')" 
+                            class="icono-eliminar">🗑</span>
+                    </div>
+                    <div>
+                        {% if r.base_comision == "Prima" %}
+                            💰 Prima
+                        {% else %}
+                            📊 Comisión
+                        {% endif %}
+                    </div>
+
+                </div>
+
+
+            {% endfor %}
+
+        </div>
+        {% endfor %}
+
+    </div>
+
+    {% endfor %}
+</div>
+{% endfor %}
+
+</div>
+</div>
+
+
+<div id="panel-edicion" class="panel-edicion">
+<input type="hidden" id="edit_id">
+<h3>Nueva regla</h3>
+
+<label>Aseguradora</label>
+<label>Aseguradora</label>
+<select id="edit_aseguradora">
+    {% for a in aseguradoras %}
+        <option value="{{a.id}}">{{a.nombre}}</option>
+    {% endfor %}
+</select>
+
+
+<label>Producto</label>
+<input id="edit_producto">
+
+<label>Moneda</label>
+<input id="edit_moneda">
+
+<label>Nivel</label>
+<input id="edit_nivel">
+
+<label>Rango</label>
+<input id="edit_rango">
+
+<label>Año póliza</label>
+<input id="edit_anio">
+
+<label>% Comisión</label>
+<input id="edit_porcentaje">
+
+<label>Base Comisión</label>
+<select id="edit_base_comision">
+    <option value="Prima">Prima</option>
+    <option value="Comision">Comisión</option>
+</select>
+
+
+<br><br>
+
+<button onclick="guardarEdicion()">💾 Guardar</button>
+<button onclick="cerrarPanel()">Cerrar</button>
+
+</div>
+
+
+<script>
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value
+}
+
+
+function nuevoRegistro(){
+    console.log("ENTRÉ A NUEVO")
+    console.log("PANEL:", document.getElementById("panel-edicion"))
+
+    document.getElementById("edit_id").value = ""
+
+    // 👇 TOMAR ASEGURADORA DEL COMBO
+    const combo = document.querySelector("select[name='aseguradora_id']")
+    const texto = combo.options[combo.selectedIndex].text
+    const valor = combo.value
+
+    document.getElementById("edit_aseguradora").value = valor
+
+    document.getElementById("edit_producto").value = ""
+    document.getElementById("edit_moneda").value = ""
+    document.getElementById("edit_nivel").value = ""
+    document.getElementById("edit_rango").value = ""
+    document.getElementById("edit_anio").value = ""
+    document.getElementById("edit_porcentaje").value = ""
+
+    document.getElementById("panel-edicion").classList.add("abierto")
+}
+
+
+function eliminar(id){
+
+    if(!confirm("Eliminar regla?")) return
+
+    // 🔥 limpiar el id (por si viene 16.667)
+    id = id.toString().replaceAll(".", "")
+
+    fetch("/eliminar-regla-comision/"+id+"/")
+    .then(r=>r.json())
+    .then(resp=>{
+
+
+        if(resp.ok){
+
+            // opción 1: borrar fila (rápido visual)
+            const fila = document.querySelector(`.fila[data-id='${id}']`)
+            if(fila) fila.remove()
+
+            // opción 2 (MEJOR): refrescar todo
+            setTimeout(()=> location.reload(), 300)
+
+            
+        }else{
+            alert("No se pudo eliminar")
+        }
+
+    })
+}
+
+function guardarEdicion(){
+
+    const data = {
+        id: "",
+        aseguradora: document.getElementById("edit_aseguradora").value,
+        producto: document.getElementById("edit_producto").value,
+        moneda: document.getElementById("edit_moneda").value,
+        nivel: parseInt(document.getElementById("edit_nivel").value || 0),
+        anio: parseInt(document.getElementById("edit_anio").value || 0),
+        porcentaje: parseFloat(document.getElementById("edit_porcentaje").value || 0),
+        rango: document.getElementById("edit_rango").value || null,
+        base_comision: document.getElementById("edit_base_comision").value,
+
+    }
+
+    fetch("/guardar-regla-comision/",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "X-CSRFToken": getCSRFToken()
+        },
+        body:JSON.stringify(data)
+    })
+    .then(r=>r.json())
+    .then(resp=>{
+
+    if(resp.ok){
+
+        cerrarPanel()
+
+        const r = resp.regla
+
+        // 🔥 contenedor general del árbol
+        const arbol = document.querySelector(".arbol")
+
+        // 🔥 crear fila simple (temporal)
+        const div = document.createElement("div")
+        div.className = "fila"
+        div.setAttribute("data-id", r.id)
+        div.innerHTML = `
+            <b>${r.aseguradora}</b> | ${r.producto} | ${r.moneda} →
+            Nivel ${r.nivel} | Rango ${r.rango || "-"} | Año ${r.anio || "-"} | ${r.porcentaje}%
+            <span onclick="event.stopPropagation(); eliminar(${r.id})" class="icono-eliminar">🗑</span>
+        `
+
+        // 👇 lo agregamos al final
+        arbol.appendChild(div)
+        setTimeout(()=> location.reload(), 300)
+    }
+        
+        
+        
+        
+        
+        
+        else{
+            alert("Error al guardar")
+        }
+    })
+}
+
+
+
+function cerrarPanel(){
+
+document.getElementById("panel-edicion").classList.remove("abierto")
+}
+
+
+function cancelarFila(btn){
+
+const fila = btn.closest("tr")
+
+fila.remove()
+
+}
+
+function toggle(el){
+
+    let hijos = el.nextElementSibling
+
+    while (hijos && !hijos.classList.contains("hijos")) {
+        hijos = hijos.nextElementSibling
+    }
+
+    if (!hijos) return
+
+    if (hijos.style.display === "block") {
+        hijos.style.display = "none"
+        el.innerHTML = el.innerHTML.replace("▼","▶")
+    } else {
+        hijos.style.display = "block"
+        el.innerHTML = el.innerHTML.replace("▶","▼")
+    }
+}
+
+
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("panel-edicion").classList.remove("abierto")
+})
+
+
+document.addEventListener("DOMContentLoaded", function(){
+
+    const inputs = document.querySelectorAll("#panel-edicion input")
+
+    inputs.forEach((input, index) => {
+
+        input.addEventListener("keydown", function(e){
+
+            if(e.key === "Enter"){
+
+                e.preventDefault()
+
+                const next = inputs[index + 1]
+
+
+                if(next){
+                    next.focus()
+                }
+
+            }
+
+        })
+
+    })
+
+})
+
+function actualizarPagina(){
+    location.reload()
+}
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+.tabla-listado{
+width:1000px;
+table-layout:fixed;
+}
+
+.tabla-listado th:nth-child(1),
+.tabla-listado td:nth-child(1){
+width:50px;
+}
+
+.tabla-listado th:nth-child(2),
+.tabla-listado td:nth-child(2){
+width:50px;
+}
+
+.tabla-listado th:nth-child(3),
+.tabla-listado td:nth-child(3){
+width:100px;
+}
+
+.tabla-listado th:nth-child(4),
+.tabla-listado td:nth-child(4){
+width:300px;
+}
+
+.tabla-listado th:nth-child(5),
+.tabla-listado td:nth-child(5){
+width:100px;
+}
+
+.tabla-listado td{
+    font-size:13px;
+}
+
+.tabla-listado th{
+    font-size:13px;
+}
+
+#tabla tbody tr{
+cursor:pointer;
+}
+
+/* PANEL LATERAL */
+
+.panel-editar{
+position:fixed;
+right:-380px;
+top:0;
+width:350px;
+height:100%;
+background:white;
+box-shadow:-3px 0 10px rgba(0,0,0,0.2);
+padding:20px;
+transition:0.3s;
+z-index:1000;
+}
+
+.panel-editar.abierto{
+right:0;
+}
+
+.panel-editar label{
+display:block;
+margin-top:10px;
+font-weight:bold;
+}
+
+.panel-editar input,
+.panel-editar select{
+width:220px;
+padding:4px;
+margin-top:3px;
+border:1px solid #ccc;
+border-radius:4px;
+}
+
+.panel-editar h3{
+margin-top:0;
+border-bottom:1px solid #ddd;
+padding-bottom:8px;
+}
+
+th{
+cursor:pointer;
+user-select:none;
+}
+
+.flecha{
+margin-left:6px;
+font-size:11px;
+color:#666;
+}
+
+.icono{
+    cursor:pointer;
+    margin:0 5px;
+    font-size:16px;
+}
+
+.icono.editar:hover{
+    color:#f39c12;
+}
+
+.icono.eliminar:hover{
+    color:#c0392b;
+}
+
+td:last-child{
+text-align:center;
+width:100px;
+}
+
+.filtros-box{
+    background:white;
+    padding:12px 15px;
+    border-radius:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    margin-bottom:15px;
+}
+
+.filtros-form{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.filtros-form label{
+    font-weight:bold;
+}
+
+.filtros-form select{
+    padding:5px;
+    border-radius:4px;
+    border:1px solid #ccc;
+}
+
+.btn-buscar{
+    background:#174a7c;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.btn-nuevo{
+    background:#174a7c;
+    color:white;
+    border:none;
+    padding:6px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:500;
+}
+
+
+</style>
+
+
+<h2>PAS - CLIENTES</h2>
+
+
+<div style="margin-bottom:15px; padding:10px; background:#f4f6f9; border-radius:6px;">
+
+<form method="post" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center;">
+    {% csrf_token %}
+
+    <input type="file" name="archivo" required>
+
+    <button type="submit" name="importar_excel"
+        style="background:#2e6da4;color:white;border:none;padding:6px 14px;border-radius:6px;">
+        📥 Importar
+    </button>
+
+</form>
+
+{% if resultado %}
+    <div style="margin-top:8px; color:green;">
+        {{ resultado }}
+    </div>
+{% endif %}
+
+</div>
+
+<div class="filtros-box">
+
+<form method="get" class="filtros-form">
+
+<label>PAS</label>
+
+<select name="pas">
+    <option value="">Todos</option>
+    {% for p in pas %}
+        <option value="{{ p.codigo_pas }}" {% if request.GET.pas == p.codigo_pas|stringformat:"s" %}selected{% endif %}>
+            {{ p.codigo_pas }} - {{ p.nombre }}
+        </option>
+    {% endfor %}
+</select>
+
+<button type="submit" class="btn-buscar">🔍 Buscar</button>
+
+<button type="button" onclick="nuevoRegistro()" class="btn-nuevo">➕ Nuevo</button>
+
+</form>
+
+</div>
+
+
+<table class="tabla-listado" id="tabla">
+
+<thead>
+<tr>
+<th onclick="ordenarTabla(0,this)">ID</th>
+<th onclick="ordenarTabla(1,this)">PAS</th>
+<th onclick="ordenarTabla(5,this)">Aseguradora</th> 
+<th onclick="ordenarTabla(2,this)">Cliente</th>
+<th onclick="ordenarTabla(3,this)">Clave 1</th>
+<th onclick="ordenarTabla(4,this)">Clave 2</th>
+<th>Acciones</th>
+
+</tr>
+</thead>
+
+<tbody>
+
+{% for d in datos %}
+
+<tr data-id="{{ d.id }}" onclick="editarRegistro(
+'{{ d.id }}',
+'{{ d.pas.codigo_pas }}',
+'{{ d.aseguradora.id|default:'' }}',
+'{{ d.cliente|escapejs }}',
+'{{ d.cliente_clave1|escapejs }}',
+'{{ d.cliente_clave2|escapejs }}'
+)">
+
+<td>{{ d.id }}</td>
+<td>{{ d.pas.codigo_pas }}</td>
+<td>{{ d.aseguradora.nombre|default:"" }}</td>
+<td>{{ d.cliente }}</td>
+<td>{{ d.cliente_clave1 }}</td>
+<td>{{ d.cliente_clave2 }}</td>
+
+<td>
+    <span onclick="event.stopPropagation(); editarRegistro(
+        '{{ d.id }}',
+        '{{ d.pas.codigo_pas }}',
+        '{{ d.aseguradora.id|default:'' }}',
+        '{{ d.cliente|escapejs }}',
+        '{{ d.cliente_clave1|escapejs }}',
+        '{{ d.cliente_clave2|escapejs }}'
+    )" class="icono editar">✏️</span>
+
+    <span onclick="event.stopPropagation(); eliminarDirecto('{{ d.id }}')" class="icono eliminar">🗑️</span>
+</td>
+
+</tr>
+
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+
+
+<script>
+
+function nuevoRegistro(){
+
+document.getElementById("edit_id").value=""
+document.getElementById("edit_cliente").value=""
+document.getElementById("edit_clave1").value=""
+document.getElementById("edit_clave2").value=""
+
+let selectPas = document.getElementById("edit_pas")
+if(selectPas.options.length > 0){
+selectPas.selectedIndex = 0
+}
+
+document.getElementById("panelEditar").classList.add("abierto")
+document.getElementById("edit_cliente").focus()
+}
+
+
+
+function editarRegistro(id,pas,aseguradora,cliente,clave1,clave2){
+
+    document.getElementById("edit_id").value = id
+    document.getElementById("edit_pas").value = pas
+    document.getElementById("edit_aseguradora").value = aseguradora || ""
+    document.getElementById("edit_cliente").value = cliente
+    document.getElementById("edit_clave1").value = clave1
+    document.getElementById("edit_clave2").value = clave2
+
+    document.getElementById("panelEditar").classList.add("abierto")
+}
+
+
+
+function cerrarPanel(){
+document.getElementById("panelEditar").classList.remove("abierto")
+}
+
+
+function getCookie(name) {
+
+let cookieValue = null;
+
+if (document.cookie && document.cookie !== '') {
+
+let cookies = document.cookie.split(';');
+
+for (let i = 0; i < cookies.length; i++) {
+
+let cookie = cookies[i].trim();
+
+if (cookie.substring(0, name.length + 1) === (name + '=')) {
+
+cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+break;
+
+}
+
+}
+
+}
+
+return cookieValue;
+
+}
+
+
+function guardarRegistro(){
+
+let id = document.getElementById("edit_id").value
+let pas = document.getElementById("edit_pas").value
+let aseguradora = document.getElementById("edit_aseguradora").value
+let cliente = document.getElementById("edit_cliente").value
+let clave1 = document.getElementById("edit_clave1").value
+let clave2 = document.getElementById("edit_clave2").value
+
+fetch("{% url 'pas_cliente_guardar' %}", {
+
+method: "POST",
+
+headers:{
+"Content-Type":"application/json",
+"X-CSRFToken":getCookie("csrftoken")
+},
+
+body: JSON.stringify({
+id:id,
+pas:pas,
+aseguradora:aseguradora,   // 👈 NUEVO
+cliente:cliente,
+clave1:clave1,
+clave2:clave2
+})
+
+})
+
+.then(response => response.json())
+.then(data => {
+
+if(data.ok){
+    // si es nuevo → agregar fila
+    if(!id){
+        agregarFila(data)
+    }else{
+        actualizarFila(data)
+    }
+    cerrarPanel()
+}else{
+    alert("No se pudo guardar")
+}
+
+
+})
+
+}
+
+
+
+let direccionOrden = {}
+
+function ordenarTabla(columna, th){
+
+let tabla = document.getElementById("tabla")
+let tbody = tabla.tBodies[0]
+let filas = Array.from(tbody.rows)
+
+if(!direccionOrden[columna]){
+direccionOrden[columna] = 1
+}else{
+direccionOrden[columna] *= -1
+}
+
+filas.sort(function(a,b){
+
+let A = a.cells[columna].innerText.trim()
+let B = b.cells[columna].innerText.trim()
+
+return A.localeCompare(B) * direccionOrden[columna]
+
+})
+
+filas.forEach(function(f){
+tbody.appendChild(f)
+})
+
+
+// limpiar TODAS las flechas
+document.querySelectorAll("#tabla th .flecha").forEach(f => f.remove())
+
+// crear flecha nueva
+let flecha = document.createElement("span")
+flecha.className = "flecha"
+flecha.innerText = direccionOrden[columna] === 1 ? "▲" : "▼"
+
+th.appendChild(flecha)
+
+
+
+}
+
+function actualizarFila(data){
+
+    let fila = document.querySelector(`tr[data-id='${data.id}']`)
+
+    if(!fila) return
+
+    fila.children[1].innerText = data.pas
+    fila.children[2].innerText = data.aseguradora   // 👈 NUEVO
+    fila.children[3].innerText = data.cliente
+    fila.children[4].innerText = data.clave1
+    fila.children[5].innerText = data.clave2
+}
+
+
+function agregarFila(data){
+
+    if(!data.id) return
+
+    let tbody = document.querySelector("table tbody")
+
+    let tr = document.createElement("tr")
+    tr.setAttribute("data-id", data.id)
+
+    tr.setAttribute("onclick", `
+        editarRegistro(
+            '${data.id}',
+            '${data.pas}',
+            '${data.aseguradora_id || ""}',
+            '${(data.cliente || "").replace(/'/g, "\\'")}',
+            '${(data.clave1 || "").replace(/'/g, "\\'")}',
+            '${(data.clave2 || "").replace(/'/g, "\\'")}'
+        )
+    `)
+
+    tr.innerHTML = `
+        <td>${data.id}</td>
+        <td>${data.pas}</td>
+        <td>${data.aseguradora || ""}</td>
+        <td>${data.cliente}</td>
+        <td>${data.clave1 || ""}</td>
+        <td>${data.clave2 || ""}</td>
+
+        <td>
+            <span onclick="event.stopPropagation(); 
+                editarRegistro(
+                    '${data.id}',
+                    '${data.pas}',
+                    '${data.aseguradora_id || ""}',
+                    '${(data.cliente || "").replace(/'/g, "\\'")}',
+                    '${(data.clave1 || "").replace(/'/g, "\\'")}',
+                    '${(data.clave2 || "").replace(/'/g, "\\'")}'
+                )" class="icono editar">✏️</span>
+
+            <span onclick="event.stopPropagation(); eliminarDirecto('${data.id}')" class="icono eliminar">🗑️</span>
+        </td>
+    `
+
+    tbody.prepend(tr)
+}
+
+
+function eliminarDirecto(id){
+
+    if(!confirm("¿Eliminar este registro?")) return
+
+    window.location.href = "/pas-cliente-eliminar/" + id + "/"
+}
+
+
+function eliminarRegistro(){
+
+let id = document.getElementById("edit_id").value
+
+if(!id){
+    alert("No hay registro para eliminar")
+    return
+}
+
+if(!confirm("¿Eliminar este registro?")){
+    return
+}
+
+window.location.href = "/pas-cliente-eliminar/" + id + "/"
+
+}
+
+document.getElementById("panelEditar").addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault()
+
+        let campos = Array.from(
+            document.querySelectorAll("#panelEditar input, #panelEditar select")
+        ).filter(el => el.offsetParent !== null)
+
+        let index = campos.indexOf(document.activeElement)
+
+        let siguiente = campos[index + 1]
+
+        if(siguiente){
+            siguiente.focus()
+        }else{
+            guardarRegistro()
+        }
+    }
+
+})
+
+
+
+</script>
+
+<div id="panelEditar" class="panel-editar">
+<h3>PAS - CLIENTE</h3>
+<input type="hidden" id="edit_id">
+
+
+<label>Aseguradora</label>    
+<select id="edit_aseguradora">
+    {% for a in aseguradoras %}
+        <option value="{{a.id}}">{{a.nombre}}</option>
+    {% endfor %}
+
+</select>
+
+<label>PAS</label>    
+
+<select id="edit_pas">
+{% for p in pas %}
+<option value="{{ p.codigo_pas }}">
+{{ p.codigo_pas }} - {{ p.nombre }}
+</option>
+{% endfor %}
+</select>
+
+<label>Cliente</label>
+<input type="text" id="edit_cliente">
+
+<label>Clave 1</label>
+<input type="text" id="edit_clave1">
+
+<label>Clave 2</label>
+<input type="text" id="edit_clave2">
+
+<br><br>
+
+<button onclick="guardarRegistro()">💾 Guardar</button>
+<button onclick="cerrarPanel()">Cerrar</button>
+
+</div>
+
+{% endblock %}

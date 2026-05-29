@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Editar Productor</h2>
+
+<form method="post">
+{% csrf_token %}
+
+<table class="tabla">
+
+<tr>
+<td>Código</td>
+<td>{{ p.codigo_pas }}</td>
+</tr>
+
+<tr>
+<td>Nombre</td>
+<td><input type="text" name="nombre" value="{{ p.nombre }}"></td>
+</tr>
+
+<tr>
+<td>CUIT</td>
+<td><input type="text" name="cuit" value="{{ p.cuit }}"></td>
+</tr>
+
+<tr>
+<td>CVU</td>
+<td><input type="text" name="cvu" value="{{ p.cvu }}"></td>
+</tr>
+
+</table>
+
+<br>
+
+<button type="submit" class="btn-editar">💾 Guardar</button>
+
+<a href="{% url 'productores' %}">Cancelar</a>
+
+</form>
+
+{% endblock %}

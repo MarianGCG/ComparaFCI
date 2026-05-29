@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% block content %}
+
+<div class="titulo-grafico">
+    Evolución Facturación en USD
+</div>
+
+<style>
+.barra-controles{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:1px;
+    font-size:13px;
+}
+.titulo-grafico{
+    text-align:left;
+}
+
+.grupo{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.grupo-anios{
+    flex-direction:column;
+}
+
+.contenedor-anios{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px,1fr));
+    gap:4px 10px;
+    max-width:420px;
+}
+
+.layout-principal{
+    display:flex;
+    gap:20px;
+    align-items:flex-start;
+}
+
+.grafico-container{
+    flex:1;
+    height: 65vh;
+}
+
+#legend-container{
+    width:240px;
+    font-size:12px;
+    text-align:right;
+}
+</style>
+
+
+<form method="get" class="barra-controles" onchange="this.submit()">
+
+    <div style="display:flex; gap:40px; align-items:flex-start;">
+
+        <!-- COLUMNA IZQUIERDA -->
+        <div style="min-width:480px;">
+
+            <div class="grupo">
+                <b>Periodo:</b>
+                <label><input type="radio" name="tipo" value="mensual" {% if tipo == "mensual" %}checked{% endif %}>Mensual</label>
+                <label><input type="radio" name="tipo" value="trimestral" {% if tipo == "trimestral" %}checked{% endif %}>Trimestral</label>
+                <label><input type="radio" name="tipo" value="anual" {% if tipo == "anual" %}checked{% endif %}>Anual</label>
+            </div>
+
+            <div class="grupo">
+                <b>Modo:</b>
+                <label><input type="radio" name="modo" value="lineas" {% if modo == "lineas" %}checked{% endif %}>Líneas</label>
+                <label><input type="radio" name="modo" value="barras" {% if modo == "barras" %}checked{% endif %}>Barras</label>
+            </div>
+
+            <div class="grupo grupo-anios">
+                <b>Años:</b>
+                <div class="contenedor-anios">
+                    {% for anio in anios_disponibles %}
+                        <label>
+                            <input type="checkbox" name="anio"
+                                   value="{{ anio|unlocalize }}"
+                                   {% if anio in anios_seleccionados %}checked{% endif %}>
+                            {{ anio|unlocalize }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA -->
+        <div style="width:580px;">
+
+            <div style="display:flex; align-items:flex-start; gap:5px;">
+
+                <!-- BLOQUE CHECKBOX + TEXTO -->
+                <div style="width:160px; text-align:center;">
+
+                    <!-- Checkbox centrado -->
+                    <div>
+                        <input type="checkbox" name="desglose" value="1"
+                            {% if desglose %}checked{% endif %}>
+                    </div>
+
+                    <!-- Texto debajo -->
+                    <div style="margin-top:2px;">
+                        <b>Aseguradoras</b>
+                    </div>
+
+                </div>
+
+                <!-- PANEL A LA DERECHA -->
+                <div id="legend-container"
+                    style="
+                        border:1px solid #999;
+                        padding:8px 10px;
+                        background:#f9f9f9;
+                        width:400px;
+                        margin-top:-40px;
+                        visibility: {% if desglose %}visible{% else %}hidden{% endif %};
+                    ">
+                </div>
+
+
+            </div>
+
+        </div>
+    </div>
+
+</form>
+
+
+
+
+<!-- GRAFICO ABAJO -->
+<div class="grafico-container">
+    <canvas id="grafico"></canvas>
+</div>
+
+
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+const labels = {{ labels|safe }};
+const datasets = {{ datasets|safe }};
+const tipo = "{{ tipo }}";
+const modo = "{{ modo }}";
+const desglose = {{ desglose|yesno:"true,false" }};
+const gruposDeshabilitados = {{ grupos_deshabilitados|default:"[]"|safe }};
+
+let chart = null;
+
+
+// =============================
+// FORMATEAR LABELS
+// =============================
+
+function formatearLabel(label){
+    if(tipo==="mensual"){
+        const mes = label.split("-")[1];
+        const nombres=["Ene","Feb","Mar","Abr","May","Jun",
+                       "Jul","Ago","Sep","Oct","Nov","Dic"];
+        return nombres[parseInt(mes)-1];
+    }
+    if(tipo==="trimestral")
+        return label.split("-")[1];
+    return label;
+}
+
+
+// =============================
+// LINEAS CAMBIO AÑO
+// =============================
+
+const lineasCambioAnio={
+    id:"lineasCambioAnio",
+    afterDraw(chart){
+
+        if(tipo!=="mensual") return;
+
+        const {ctx,chartArea:{top,bottom}}=chart;
+        let ultimo=null;
+
+        labels.forEach((label,i)=>{
+            const anio=label.split("-")[0];
+
+            if(ultimo && anio!==ultimo){
+                const meta=chart.getDatasetMeta(0);
+                if(!meta.data[i]) return;
+                const x=meta.data[i].x;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x,top);
+                ctx.lineTo(x,bottom);
+                ctx.strokeStyle="#cccccc";
+                ctx.lineWidth=1;
+                ctx.stroke();
+                ctx.restore();
+            }
+            ultimo=anio;
+        });
+    }
+};
+
+
+// =============================
+// AÑO CENTRADO ABAJO
+// =============================
+
+const anioCentrado={
+    id:"anioCentrado",
+    afterDraw(chart){
+
+        if(tipo==="anual") return;
+
+        const {ctx,chartArea:{bottom}}=chart;
+        const meta=chart.getDatasetMeta(0);
+        if(!meta.data.length) return;
+
+        let bloques={};
+
+        labels.forEach((label,i)=>{
+            const anio=label.split("-")[0];
+            if(!bloques[anio]) bloques[anio]=[];
+            bloques[anio].push(i);
+        });
+
+        Object.keys(bloques).forEach(anio=>{
+            const indices=bloques[anio];
+            const inicio=meta.data[indices[0]].x;
+            const fin=meta.data[indices[indices.length-1]].x;
+            const centro=(inicio+fin)/2;
+
+            ctx.save();
+            ctx.font="bold 12px Arial";
+            ctx.fillStyle="#444";
+            ctx.textAlign="center";
+            ctx.fillText(anio,centro,bottom+8);
+            ctx.restore();
+        });
+    }
+};
+
+
+// =============================
+// NOMBRE ASEGURADORA EN LINEAL
+// =============================
+
+const mostrarNombreLinea = {
+    id: "mostrarNombreLinea",
+    afterDatasetsDraw(chart){
+
+        if(!desglose) return;
+        if(modo !== "lineas") return;
+
+        const { ctx } = chart;
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+
+            if(dataset.hidden) return;
+
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (!meta || !meta.data || meta.data.length === 0) return;
+
+            // Elegimos 
+            const mitad = Math.floor(meta.data.length / 2);
+            const punto = meta.data[mitad];
+
+            if(!punto) return;
+
+            const nombre = dataset.label.substring(0,8);
+
+            ctx.save();
+            ctx.font = "bold 11px Arial";
+            ctx.fillStyle = dataset.borderColor;
+            ctx.textAlign = "center";
+
+            ctx.fillText(
+                nombre,
+                punto.x ,
+                punto.y - 14
+            );
+
+            ctx.restore();
+        });
+    }
+};
+
+
+// =============================
+// MOSTRAR VALORES
+// =============================
+
+const mostrarValores = {
+    id: "mostrarValores",
+    afterDatasetsDraw(chart){
+
+        const { ctx } = chart;
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+
+            if(dataset.hidden) return;
+
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (!meta || !meta.data) return;
+
+            meta.data.forEach((element, index) => {
+
+                const value = dataset.data[index];
+                if (!value || value === 0) return;
+
+                ctx.save();
+                ctx.font = "bold 10px Arial";
+                ctx.fillStyle = dataset.borderColor;
+                ctx.textAlign = "center";
+
+                let yPos = element.y;
+
+                // En barras lo ponemos arriba
+                if(chart.config.type === "bar"){
+                    yPos = element.y - 8;
+                }
+
+                ctx.fillText(
+                    Math.round(value).toLocaleString("es-AR"),
+                    element.x,
+                    yPos - 5
+                );
+
+                ctx.restore();
+            });
+        });
+    }
+};
+
+// =============================
+// CREAR GRAFICO
+// =============================
+
+function crearGrafico(){
+
+    if(chart) chart.destroy();
+
+    datasets.forEach(ds=>{
+        if(gruposDeshabilitados.includes(ds.grupo))
+            ds.hidden=true;
+    });
+
+    chart=new Chart(document.getElementById("grafico"),{
+
+        type: modo==="barras"?"bar":"line",
+
+        data:{ labels:labels, datasets:datasets },
+
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{
+                legend:{ display:!desglose }
+            },
+            scales:{
+                x:{
+                    ticks:{
+                        autoSkip:false,
+                        callback:(v,i)=>formatearLabel(labels[i])
+                    }
+                }
+            }
+        },
+
+        plugins:[lineasCambioAnio,anioCentrado,mostrarNombreLinea,mostrarValores]
+    });
+
+    if(desglose)
+        generarLeyendaAgrupada(chart);
+}
+
+
+// =============================
+// LEYENDA AGRUPADA
+// =============================
+
+function generarLeyendaAgrupada(chart){
+
+    const container=document.getElementById("legend-container");
+    container.innerHTML="";
+
+    const grupos={};
+
+    chart.data.datasets.forEach((ds,i)=>{
+        if(!grupos[ds.grupo]) grupos[ds.grupo]=[];
+        grupos[ds.grupo].push({i,ds});
+    });
+
+    Object.keys(grupos).sort().forEach(grupo=>{
+
+        const div=document.createElement("div");
+        div.style.marginBottom="2px";
+        div.style.display="flex";
+        div.style.justifyContent="flex-start";
+        div.style.flexWrap="wrap";
+        div.style.gap="4px";
+
+        const titulo=document.createElement("strong");
+        titulo.innerText=grupo+" ";
+        titulo.style.cursor="pointer";
+
+        const codigo=grupo.substring(0,2);
+
+        const todosOcultos = grupos[grupo].every(x => x.ds.hidden);
+        if(todosOcultos){
+            titulo.style.textDecoration="line-through";
+            titulo.style.opacity="0.5";
+        }
+
+
+        titulo.onclick=()=>{
+            const ocultar=!grupos[grupo].every(x=>x.ds.hidden);
+            grupos[grupo].forEach(x=>x.ds.hidden=ocultar);
+            chart.update();
+            generarLeyendaAgrupada(chart);
+        };
+
+        div.appendChild(titulo);
+
+        grupos[grupo].forEach(item=>{
+
+            const span=document.createElement("span");
+            span.innerText=item.ds.label.substring(0,8);
+            span.style.display="inline-block";
+            span.style.padding="1px 4px";
+            span.style.margin="1px";
+            span.style.backgroundColor=item.ds.borderColor;
+            span.style.borderRadius="4px";
+            span.style.cursor="pointer";
+            span.style.fontSize="11px";
+
+            if(item.ds.hidden){
+                span.style.textDecoration="line-through";
+                span.style.opacity="0.5";
+            }
+
+            span.onclick=()=>{
+                item.ds.hidden=!item.ds.hidden;
+                chart.update();
+                generarLeyendaAgrupada(chart);
+            };
+
+            div.appendChild(span);
+        });
+
+        container.appendChild(div);
+    });
+}
+
+crearGrafico();
+
+</script>
+
+{% endblock %}

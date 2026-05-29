@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block content %}
+
+<h2>{{ titulo }}</h2>
+
+<table border="1" cellpadding="6"
+       style="border-collapse: collapse; width:100%; font-size:14px;">
+
+    <tr style="background-color:#e9e9e9;">
+        <th>Nombre</th>
+        <th>CUIT</th>
+        <th>Tipo Factura</th>
+        <th>Activa</th>
+        <th>Email</th>
+        <th>Código Interno</th>
+        <th>Razón Social AFIP</th>
+    </tr>
+
+    {% for a in aseguradoras %}
+    <tr>
+        <td>{{ a.nombre }}</td>
+        <td>{{ a.cuit }}</td>
+        <td>{{ a.tipo_factura }}</td>
+        <td>{{ a.activa }}</td>
+        <td>{{ a.email }}</td>
+        <td>{{ a.codigo_interno }}</td>
+        <td>{{ a.razon_social_afip }}</td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+<p style="margin-top:10px;">
+    <strong>Total:</strong> {{ aseguradoras|length }}
+</p>
+
+{% endblock %}

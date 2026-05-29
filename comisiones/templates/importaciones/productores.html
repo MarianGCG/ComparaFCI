@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+.tabla-productores td,
+.tabla-productores th{
+    font-size:15px;
+}
+
+
+.panel-editar{
+position:fixed;
+right:-380px;
+top:0;
+width:350px;
+height:100%;
+background:white;
+box-shadow:-3px 0 10px rgba(0,0,0,0.2);
+padding:20px;
+transition:0.3s;
+z-index:1000;
+}
+
+.panel-editar label{
+display:block;
+margin-top:10px;
+font-weight:bold;
+}
+
+.panel-editar input{
+width:220px;
+padding:4px;
+margin-top:3px;
+border:1px solid #ccc;
+border-radius:4px;
+}
+
+
+.panel-editar.abierto{
+right:0;
+}
+
+.panel-editar h3{
+margin-top:0;
+border-bottom:1px solid #ddd;
+padding-bottom:8px;
+}
+
+.tabla-listado{
+width:900px;
+table-layout:fixed;
+}
+
+.tabla-listado th:nth-child(1),
+.tabla-listado td:nth-child(1){
+width:80px;
+}
+
+.tabla-listado th:nth-child(2),
+.tabla-listado td:nth-child(2){
+width:250px;
+}
+
+.tabla-listado th:nth-child(3),
+.tabla-listado td:nth-child(3){
+width:180px;
+}
+
+.tabla-listado th:nth-child(4),
+.tabla-listado td:nth-child(4){
+width:220px;
+}
+
+.tabla-listado th:nth-child(5),
+.tabla-listado td:nth-child(5){
+width:120px;
+}
+
+.icono-editar,
+.icono-eliminar{
+    font-size:14px;   /* antes seguro 18/20 */
+    line-height:1;
+}
+
+.tabla-listado td{
+    padding:4px 6px;   /* antes 6px o más */
+    line-height:1.2;
+}
+
+.tabla-listado td{
+    vertical-align:middle;
+}
+.acciones{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+</style>
+
+
+<h2>PRODUCTORES</h2>
+
+<div style="background:white;padding:15px;border-radius:8px;margin-bottom:15px;">
+
+<form method="post" enctype="multipart/form-data"
+      style="display:flex; align-items:center; gap:12px;">
+
+{% csrf_token %}
+
+<label>Archivo Excel</label>
+
+<input type="file" name="archivo" required>
+
+<button type="submit"
+style="padding:6px 14px;background:#174a7c;color:white;border:none;border-radius:6px;">
+Importar
+</button>
+
+{% if resultado %}
+<span style="
+color:#1f7a2f;
+font-weight:bold;
+background:#e8f6ec;
+padding:4px 10px;
+border-radius:6px;
+">
+✔ {{ resultado }}
+</span>
+{% endif %}
+
+</form>
+
+</div>
+
+
+
+<table class="tabla-listado" id="tablaPAS">
+
+<thead>
+<tr>
+<th onclick="ordenarTabla(0,this)">Código</th>
+<th onclick="ordenarTabla(1,this)">Nombre</th>
+<th onclick="ordenarTabla(2,this)">CUIT</th>
+<th onclick="ordenarTabla(3,this)">CVU</th>
+<th>Acciones</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for p in productores %}
+<tr>
+<td>{{ p.codigo_pas }}</td>
+<td>{{ p.nombre }}</td>
+<td>{{ p.cuit }}</td>
+<td>{{ p.cvu }}</td>
+
+<td>
+
+<a href="#"
+onclick="editarPAS(
+'{{ p.codigo_pas|escapejs }}',
+'{{ p.nombre|escapejs }}',
+'{{ p.cuit|escapejs }}',
+'{{ p.cvu|escapejs }}'
+); return false;">
+✏️
+</a>
+
+<a href="{% url 'productor_eliminar' p.codigo_pas %}"
+onclick="return confirm('¿Eliminar productor?')"
+class="btn-eliminar"
+title="Eliminar productor">
+🗑️
+</a>
+
+</td>
+
+</tr>
+
+{% empty %}
+<tr>
+<td colspan="4" style="text-align:center;">
+No hay productores cargados
+</td>
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+
+
+
+<script>
+
+// ORDENAR TABLA
+function ordenarTabla(col, header){
+
+let tabla = document.getElementById("tablaPAS")
+let filas = Array.from(tabla.tBodies[0].rows)
+
+let asc = tabla.getAttribute("data-orden") !== "asc"
+
+filas.sort((a,b)=>{
+
+let A = a.cells[col].innerText.trim()
+let B = b.cells[col].innerText.trim()
+
+return asc ? A.localeCompare(B) : B.localeCompare(A)
+
+})
+
+filas.forEach(f=>tabla.tBodies[0].appendChild(f))
+
+tabla.setAttribute("data-orden", asc ? "asc":"desc")
+
+let ths = tabla.querySelectorAll("th")
+
+ths.forEach(th=>{
+th.innerHTML = th.innerHTML.replace(" ▲","").replace(" ▼","")
+})
+
+header.innerHTML += asc ? " ▲" : " ▼"
+
+}
+
+
+// ABRIR PANEL EDITAR
+function editarPAS(codigo,nombre,cuit,cvu){
+
+document.getElementById("edit_codigo").value = codigo
+document.getElementById("edit_nombre").value = nombre
+document.getElementById("edit_cuit").value = cuit
+document.getElementById("edit_cvu").value = cvu
+
+document.getElementById("panelEditar").classList.add("abierto")
+
+}
+
+
+// CERRAR PANEL
+function cerrarPanel(){
+
+document.getElementById("panelEditar").classList.remove("abierto")
+
+}
+
+
+// OBTENER CSRF TOKEN
+function getCookie(name) {
+
+let cookieValue = null;
+
+if (document.cookie && document.cookie !== '') {
+
+let cookies = document.cookie.split(';');
+
+for (let i = 0; i < cookies.length; i++) {
+
+let cookie = cookies[i].trim();
+
+if (cookie.substring(0, name.length + 1) === (name + '=')) {
+
+cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+break;
+
+}
+
+}
+
+}
+
+return cookieValue;
+
+}
+
+
+// GUARDAR EDICION
+function guardarEdicion(){
+
+let codigo = document.getElementById("edit_codigo").value
+let nombre = document.getElementById("edit_nombre").value
+let cuit = document.getElementById("edit_cuit").value
+let cvu = document.getElementById("edit_cvu").value
+
+fetch("/productor_editar/" + codigo + "/", {
+
+method: "POST",
+
+headers: {
+"Content-Type": "application/json",
+"X-CSRFToken": getCookie("csrftoken")
+},
+
+body: JSON.stringify({
+nombre:nombre,
+cuit:cuit,
+cvu:cvu
+})
+
+})
+.then(response => response.json())
+.then(data => {
+
+if(data.ok){
+location.reload()
+}else{
+alert("No se pudo guardar")
+}
+
+})
+
+}
+
+</script>
+
+
+
+<div id="panelEditar" class="panel-editar"> <h3>Editar Productor</h3>
+
+<input type="hidden" id="edit_codigo">
+
+<label>Nombre</label>
+<input type="text" id="edit_nombre">
+
+<label>CUIT</label>
+<input type="text" id="edit_cuit">
+
+<label>CVU</label>
+<input type="text" id="edit_cvu">
+
+<br><br>
+
+<button type="button" onclick="guardarEdicion()">💾 Guardar</button>
+<button type="button" onclick="cerrarPanel()">Cerrar</button>
+
+</div>
+
+
+{% endblock %}

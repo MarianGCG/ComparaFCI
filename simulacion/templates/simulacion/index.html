@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulación de Renta</title>
+  {% load static %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--brand:#1a3a6b;--brand-light:#e8edf5;--gray:#6b7280;--gray-light:#f4f5f7;--gray-border:#d1d5db;--white:#fff;--success:#0f6e56;--danger:#c0392b;--text:#1a1a2e;--text2:#4b5563}
+    body{font-family:'DM Sans',sans-serif;background:#f0f2f7;color:var(--text);padding:1.5rem 1rem 4rem}
+    .app{max-width:900px;margin:0 auto}
+
+    /* Header */
+    .header{display:flex;align-items:center;gap:14px;padding:1.1rem 1.4rem;background:var(--brand);border-radius:12px;margin-bottom:1.5rem}
+    .header-text h1{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:#fff}
+    .header-text p{font-size:12px;color:rgba(255,255,255,0.65);margin-top:2px}
+
+    /* Cards */
+    .card{background:var(--white);border:1px solid var(--gray-border);border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:1rem}
+    .card-title{font-family:'Libre Baskerville',serif;font-size:14px;font-weight:700;color:var(--brand);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+    .card-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--brand);border-radius:2px}
+
+    /* Grid de escenarios */
+    .scenarios-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+    .scenario-card{background:var(--white);border:1px solid var(--gray-border);border-radius:10px;padding:1rem}
+    .scenario-card .sc-num{font-size:11px;font-weight:500;color:var(--gray);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.6rem}
+    .sc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.8rem}
+    .field label{font-size:11px;color:var(--text2);font-weight:500;display:block;margin-bottom:3px}
+    .field input{width:100%;padding:7px 10px;border:1px solid var(--gray-border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none}
+    .field input:focus{border-color:var(--brand)}
+
+    /* Parámetros globales */
+    .global-params{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem}
+    .global-params .field{flex:1;min-width:160px}
+    .perfil-select{padding:8px 12px;border:1px solid var(--gray-border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);outline:none;cursor:pointer;width:100%}
+    .perfil-select:focus{border-color:var(--brand)}
+
+    /* Slider tasa */
+    .slider-wrap{display:flex;align-items:center;gap:10px;margin-top:4px}
+    .slider-wrap input[type=range]{flex:1;accent-color:var(--brand)}
+    .slider-val{font-size:13px;font-weight:500;color:var(--brand);min-width:42px;text-align:right}
+
+    /* Botón calcular */
+    .btn-calc{padding:11px 28px;background:var(--brand);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;display:flex;align-items:center;gap:8px}
+    .btn-calc:hover{opacity:.88}
+    .btn-calc:disabled{opacity:.5;cursor:not-allowed}
+
+    /* Resultados */
+    .results-section{display:none}
+    .results-section.visible{display:block}
+    .perfil-badge{display:inline-block;padding:4px 14px;background:var(--brand-light);color:var(--brand);border-radius:20px;font-size:12px;font-weight:500;margin-bottom:1rem}
+
+    /* Tarjetas de resultado por escenario */
+    .res-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+    .res-card{background:var(--white);border:1px solid var(--gray-border);border-radius:10px;overflow:hidden}
+    .res-card-header{background:var(--brand);padding:.7rem 1rem;display:flex;justify-content:space-between;align-items:center}
+    .res-card-header .rc-label{font-size:12px;color:rgba(255,255,255,.75);font-weight:500}
+    .res-card-header .rc-capital{font-family:'Libre Baskerville',serif;font-size:16px;color:#fff;font-weight:700}
+    .res-card-body{padding:1rem}
+    .res-kpi{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.8rem}
+    .kpi{background:var(--gray-light);border-radius:8px;padding:8px 10px}
+    .kpi .kl{font-size:10px;color:var(--gray);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+    .kpi .kv{font-size:16px;font-weight:500;color:var(--text)}
+    .kpi .kv.green{color:var(--success)}
+    .kpi .kv.blue{color:var(--brand)}
+
+    /* Toggle tabla */
+    .toggle-tabla{font-size:12px;color:var(--brand);cursor:pointer;font-weight:500;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;display:flex;align-items:center;gap:4px}
+    .toggle-tabla:hover{text-decoration:underline}
+
+    /* Tabla año a año */
+    .tabla-wrap{display:none;margin-top:.8rem;overflow-x:auto}
+    .tabla-wrap.open{display:block}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:var(--brand-light);color:var(--brand);font-weight:500;padding:6px 10px;text-align:right;white-space:nowrap}
+    th:first-child{text-align:center}
+    td{padding:5px 10px;text-align:right;border-bottom:1px solid var(--gray-border);color:var(--text)}
+    td:first-child{text-align:center;font-weight:500}
+    td.negative{color:var(--danger)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f9fafb}
+
+    /* Gráfico */
+    .chart-section{background:var(--white);border:1px solid var(--gray-border);border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:1rem}
+    .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+    .leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+    .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+    .chart-box{position:relative;width:100%;height:260px}
+
+    /* Loading */
+    .loading{display:none;align-items:center;gap:8px;font-size:13px;color:var(--gray);margin-left:1rem}
+    .loading.visible{display:flex}
+    .spinner{width:16px;height:16px;border:2px solid var(--gray-border);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .note{font-size:11px;color:var(--gray);font-style:italic;margin-top:.5rem}
+
+    @media(max-width:600px){
+      .scenarios-grid,.res-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-text">
+      <h1>Simulación de renta</h1>
+      <p>Proyección de capital con retiro periódico — hasta 4 escenarios</p>
+    </div>
+  </div>
+
+  <!-- Parámetros globales -->
+  <div class="card">
+    <div class="card-title">Parámetros generales</div>
+    <div class="global-params">
+      <div class="field">
+        <label>Perfil de inversión</label>
+        <select class="perfil-select" id="perfil">
+          <option value="Conservador">Conservador</option>
+          <option value="Moderado" selected>Moderado</option>
+          <option value="Agresivo">Agresivo</option>
+        </select>
+      </div>
+      <div class="field" style="flex:2">
+        <label>Tasa de interés anual estimada: <span id="tasa-out" style="color:var(--brand);font-weight:500">4.75%</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="tasa" min="1" max="25" value="4.75" step="0.25"
+                 oninput="document.getElementById('tasa-out').textContent=parseFloat(this.value).toFixed(2)+'%'">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Escenarios -->
+  <div class="card">
+    <div class="card-title">Escenarios (hasta 4)</div>
+    <div class="scenarios-grid" id="scenarios-grid">
+      <!-- Escenario 1 -->
+      <div class="scenario-card">
+        <div class="sc-num">Escenario 1</div>
+        <div class="sc-inputs">
+          <div class="field"><label>Capital inicial</label><input type="number" class="sc-capital" value="85000" min="0" placeholder="Ej: 100000"></div>
+          <div class="field"><label>Años de retiro</label><input type="number" class="sc-anios" value="1" min="1" max="50" placeholder="Ej: 10"></div>
+        </div>
+      </div>
+      <!-- Escenario 2 -->
+      <div class="scenario-card">
+        <div class="sc-num">Escenario 2</div>
+        <div class="sc-inputs">
+          <div class="field"><label>Capital inicial</label><input type="number" class="sc-capital" value="45000" min="0"></div>
+          <div class="field"><label>Años de retiro</label><input type="number" class="sc-anios" value="3" min="1" max="50"></div>
+        </div>
+      </div>
+      <!-- Escenario 3 -->
+      <div class="scenario-card">
+        <div class="sc-num">Escenario 3</div>
+        <div class="sc-inputs">
+          <div class="field"><label>Capital inicial</label><input type="number" class="sc-capital" value="41000" min="0"></div>
+          <div class="field"><label>Años de retiro</label><input type="number" class="sc-anios" value="15" min="1" max="50"></div>
+        </div>
+      </div>
+      <!-- Escenario 4 -->
+      <div class="scenario-card">
+        <div class="sc-num">Escenario 4</div>
+        <div class="sc-inputs">
+          <div class="field"><label>Capital inicial</label><input type="number" class="sc-capital" value="41000" min="0"></div>
+          <div class="field"><label>Años de retiro</label><input type="number" class="sc-anios" value="20" min="1" max="50"></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center">
+      <button class="btn-calc" id="btn-calcular" onclick="calcular()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M16 5l3 3-3 3M19 8H9"/></svg>
+        Calcular
+      </button>
+      <div class="loading" id="loading"><div class="spinner"></div>Calculando...</div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="results-section" id="results-section">
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:.5rem">
+      <span class="perfil-badge" id="badge-perfil">Perfil: Moderado</span>
+      <span style="font-size:12px;color:var(--gray)" id="badge-tasa">Tasa: 4.75% anual</span>
+    </div>
+
+    <div class="res-grid" id="res-grid"></div>
+
+    <!-- Gráfico comparativo -->
+    <div class="chart-section">
+      <div class="card-title">Evolución comparativa del capital</div>
+      <div class="legend" id="chart-legend"></div>
+      <div class="chart-box"><canvas id="chartRenta" role="img" aria-label="Evolución del capital por escenario"></canvas></div>
+    </div>
+
+    <p class="note">* Los valores son proyecciones estimativas. Los resultados reales pueden variar según condiciones del mercado.</p>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const COLORS = ['#1a3a6b','#0f6e56','#854f0b','#7f0000'];
+const COLORS_BG = ['rgba(26,58,107,0.08)','rgba(15,110,86,0.08)','rgba(133,79,11,0.08)','rgba(127,0,0,0.08)'];
+let chartInstance = null;
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e6) return sign + '$' + (abs/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + '$' + Math.round(abs).toLocaleString('es-AR');
+  return sign + '$' + Math.round(abs).toLocaleString('es-AR');
+}
+
+function getCsrfToken() {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+async function calcular() {
+  const btn = document.getElementById('btn-calcular');
+  const loading = document.getElementById('loading');
+  btn.disabled = true;
+  loading.classList.add('visible');
+
+  const tasa = parseFloat(document.getElementById('tasa').value) / 100;
+  const perfil = document.getElementById('perfil').value;
+
+  const capitals = document.querySelectorAll('.sc-capital');
+  const aniosList = document.querySelectorAll('.sc-anios');
+  const escenarios = [];
+  for (let i = 0; i < capitals.length; i++) {
+    const cap = parseFloat(capitals[i].value);
+    const an = parseInt(aniosList[i].value);
+    if (cap > 0 && an > 0) {
+      escenarios.push({ capital: cap, anios: an });
+    }
+  }
+
+  try {
+    const resp = await fetch('/simulacion/calcular/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify({ tasa_anual: tasa, perfil, escenarios })
+    });
+    const data = await resp.json();
+    renderResultados(data);
+  } catch (err) {
+    alert('Error al calcular. Verificá tu conexión.');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    loading.classList.remove('visible');
+  }
+}
+
+function renderResultados(data) {
+  document.getElementById('badge-perfil').textContent = 'Perfil: ' + data.perfil;
+  document.getElementById('badge-tasa').textContent = 'Tasa: ' + (data.tasa_anual * 100).toFixed(2) + '% anual';
+
+  const grid = document.getElementById('res-grid');
+  grid.innerHTML = '';
+
+  const chartLabels = new Set();
+  const datasets = [];
+  const legendItems = [];
+
+  data.escenarios.forEach((esc, idx) => {
+    const color = COLORS[idx % COLORS.length];
+    const colorBg = COLORS_BG[idx % COLORS_BG.length];
+
+    // Tarjeta resultado
+    const card = document.createElement('div');
+    card.className = 'res-card';
+    const tablaId = `tabla-${idx}`;
+
+    card.innerHTML = `
+      <div class="res-card-header">
+        <div>
+          <div class="rc-label">Escenario ${idx+1} · ${esc.anios} año${esc.anios>1?'s':''}</div>
+          <div class="rc-capital">${fmt(esc.capital)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:rgba(255,255,255,.7)">Retiro mensual</div>
+          <div style="font-family:'Libre Baskerville',serif;font-size:22px;color:#fff;font-weight:700">
+            ${fmt(esc.retiro_mensual)}
+          </div>
+        </div>
+      </div>
+      <div class="res-card-body">
+        <div class="res-kpi">
+          <div class="kpi"><div class="kl">Retiro anual</div><div class="kv blue">${fmt(esc.retiro_anual)}</div></div>
+          <div class="kpi"><div class="kl">Capital inicial</div><div class="kv">${fmt(esc.capital)}</div></div>
+        </div>
+        <button class="toggle-tabla" onclick="toggleTabla('${tablaId}', this)">
+          ▶ Ver tabla año a año
+        </button>
+        <div class="tabla-wrap" id="${tablaId}">
+          <table>
+            <thead>
+              <tr>
+                <th>Año</th>
+                <th>Capital inicio</th>
+                <th>Interés</th>
+                <th>Retiro anual</th>
+                <th>Capital fin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${esc.tabla.map(row => `
+                <tr>
+                  <td>${row.anio}</td>
+                  <td class="${row.capital_inicio < 0 ? 'negative' : ''}">${fmt(row.capital_inicio)}</td>
+                  <td class="${row.interes < 0 ? 'negative' : ''}">${fmt(row.interes)}</td>
+                  <td>${fmt(row.retiro_anual)}</td>
+                  <td class="${row.capital_fin < 0 ? 'negative' : ''}">${fmt(row.capital_fin)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+
+    // Datos para el gráfico
+    esc.tabla.forEach(row => chartLabels.add('Año ' + row.anio));
+    const chartData = esc.tabla.map(row => ({x: 'Año ' + row.anio, y: row.capital_fin}));
+    datasets.push({
+      label: `Escenario ${idx+1} — ${fmt(esc.capital)} / ${esc.anios} años`,
+      data: chartData,
+      borderColor: color,
+      backgroundColor: colorBg,
+      fill: true,
+      tension: 0.3,
+      pointRadius: esc.tabla.length <= 15 ? 3 : 0,
+      borderWidth: 2.5,
+    });
+
+    legendItems.push({ label: `E${idx+1}: ${fmt(esc.capital)}, ${esc.anios} año${esc.anios>1?'s':''}`, color });
+  });
+
+  // Leyenda del gráfico
+  const legendEl = document.getElementById('chart-legend');
+  legendEl.innerHTML = legendItems.map(l =>
+    `<span class="leg-item"><span class="leg-dot" style="background:${l.color}"></span>${l.label}</span>`
+  ).join('');
+
+  // Gráfico
+  const labels = Array.from(chartLabels).sort((a,b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+  const ctx = document.getElementById('chartRenta').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => {
+              if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+              if (Math.abs(v) >= 1e3) return '$' + (v/1000).toFixed(0) + 'k';
+              return '$' + v;
+            },
+            font: { size: 10 }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          ticks: { autoSkip: true, maxTicksLimit: 12, font: { size: 10 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  document.getElementById('results-section').classList.add('visible');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleTabla(id, btn) {
+  const wrap = document.getElementById(id);
+  const open = wrap.classList.toggle('open');
+  btn.textContent = (open ? '▼' : '▶') + ' Ver tabla año a año';
+}
+</script>
+</body>
+</html>

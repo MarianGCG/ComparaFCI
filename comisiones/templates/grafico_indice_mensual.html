@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% block content %}
+
+<div class="titulo-grafico">
+    Índice Interanual por Mes
+</div>
+
+<style>
+
+/* controles arriba, fuera del gráfico */
+.fila-controles {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.grupo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.checkbox-anio {
+    margin-right: 6px;
+}
+
+select {
+    padding: 3px 6px;
+    font-size: 14px;
+}
+
+button {
+    padding: 3px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #2c78be;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+
+button:hover {
+    background: #1f5d96;
+}
+
+/* área del gráfico sola */
+.area-grafico {
+    height: calc(100vh - 150px);
+}
+
+.area-grafico img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+</style>
+
+
+<!-- CONTROLES ARRIBA (FUERA DEL GRAFICO) -->
+
+<form method="get">
+
+<div class="fila-controles">
+
+    <!-- AÑOS -->
+    <div class="grupo">
+        <strong>Años:</strong>
+
+        {% for anio in anios_disponibles %}
+        <label class="checkbox-anio">
+            <input type="checkbox"
+                   name="anio"
+                   value="{{ anio|unlocalize }}"
+                   {% if anio in anios_seleccionados %}checked{% endif %}>
+            {{ anio|unlocalize }}
+        </label>
+        {% endfor %}
+    </div>
+
+
+    <!-- AÑO BASE -->
+    <div class="grupo">
+
+        <strong>Base:</strong>
+
+        <select name="anio_base">
+
+        {% for anio in anios_disponibles %}
+
+        <option value="{{ anio|unlocalize }}"
+        {% if anio == anio_base %}selected{% endif %}>
+        {{ anio|unlocalize }}
+        </option>
+
+        {% endfor %}
+
+        </select>
+
+    </div>
+
+
+    <!-- BOTÓN -->
+    <div class="grupo">
+        <button type="submit">Actualizar</button>
+    </div>
+
+</div>
+
+</form>
+
+
+
+<!-- GRAFICO SOLO -->
+
+{% if grafico %}
+
+<div class="area-grafico">
+    <img src="data:image/png;base64,{{ grafico }}">
+</div>
+
+{% else %}
+
+<p>No hay datos disponibles.</p>
+
+{% endif %}
+
+
+{% endblock %}

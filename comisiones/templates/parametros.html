@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Parámetros del Sistema</h2>
+
+<a href="{% url 'parametro_nuevo' %}" class="btn">➕ Nuevo parámetro</a>
+
+<br><br>
+
+<table border="1" cellpadding="6">
+
+<tr>
+<th>Código</th>
+<th>Valor</th>
+<th>Descripción</th>
+<th>Acciones</th>
+</tr>
+
+{% for p in parametros %}
+
+<tr>
+
+<td>{{ p.codigo }}</td>
+
+<td>{{ p.valor }}</td>
+
+<td>{{ p.descripcion }}</td>
+
+<td>
+
+<a href="{% url 'parametro_editar' p.id %}">✏ Editar</a>
+
+&nbsp;
+
+<a href="{% url 'parametro_eliminar' p.id %}"
+   onclick="return confirm('¿Eliminar parámetro?')">
+   🗑 Eliminar
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endblock %}

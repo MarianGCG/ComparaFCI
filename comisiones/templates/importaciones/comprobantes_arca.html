@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Importar Comprobantes ARCA</h2>
+
+<div style="background:white;padding:20px;border-radius:8px;
+            box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:20px;">
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <input type="file" name="archivo" accept=".xlsx" required>
+
+        <button type="submit"
+                style="padding:6px 14px;
+                       background:#2c78be;
+                       color:white;
+                       border:none;
+                       border-radius:5px;">
+            Importar
+        </button>
+    </form>
+
+</div>
+
+{% if resultado %}
+<div style="background:white;padding:20px;border-radius:8px;
+            box-shadow:0 3px 8px rgba(0,0,0,0.1);">
+
+    <p><strong>Insertados:</strong> {{ resultado.insertados }}</p>
+    <p><strong>Omitidos:</strong> {{ resultado.omitidos }}</p>
+    <p><strong>Actualizados:</strong> {{ resultado.actualizados }}</p>
+    <p><strong>No encontrados:</strong> {{ resultado.no_encontrados }}</p>
+
+</div>
+{% endif %}
+
+{% endblock %}
