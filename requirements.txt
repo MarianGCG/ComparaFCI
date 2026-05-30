@@ -10,3 +10,4 @@ matplotlib==3.7.5
 XlsxWriter
 pdfplumber==0.10.3
 requests==2.32.3
+beautifulsoup4==4.12.3

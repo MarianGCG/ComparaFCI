@@ -656,15 +656,10 @@ var CAFCI_DATA = null;
 
 async function loadCAFCIData(){
   if(CAFCI_DATA) return CAFCI_DATA;
-
   const r = await fetch('/cafci-mm/');
-
   if(!r.ok) throw new Error('HTTP ' + r.status);
-
   const data = await r.json();
-
   CAFCI_DATA = data.clases || data;
-
   return CAFCI_DATA;
 }
 
@@ -676,53 +671,52 @@ function dateStr(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOStri
 function calcTNA(val,dias,mode){if(val===null||val===undefined)return null;var v=parseFloat(val);if(isNaN(v))return null;if(mode==='tna')return v*100;return(Math.pow(1+v,365/dias)-1)*100;}
 async function apiFetch(path){var r=await fetch('https://api.cafci.org.ar'+path,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 
-
 async function loadFondo(f){
   var fk = k(f);
+  try {
+    var item = CAFCI_DATA && CAFCI_DATA.find(function(x){
+      return String(x.fondo_id) === String(f.fondo) &&
+             String(x.clase_id) === String(f.clase);
+    });
 
-  try{
-
-    var item = CAFCI_DATA.find(x =>
-      String(x.fondo_id) === String(f.fondo) &&
-      String(x.clase_id) === String(f.clase)
-    );
-
-    if(!item){
+    if(item){
+      var rend = item.rendimientos || {};
       cache[fk] = {
-        tna7d:null,
-        tnaMes:null,
-        tnaAnio:null,
-        ok:false
+        tna7d:   rend.dias_7   ? parseFloat(rend.dias_7.tna)   : null,
+        tnaMes:  rend.mes_1    ? parseFloat(rend.mes_1.tna)    : null,
+        tnaAnio: rend.meses_12 ? parseFloat(rend.meses_12.tna) : null,
+        tipo: 'T+0',
+        ok: true
       };
-      renderRow(f);
-      updateSummary();
-      return;
+    } else {
+      var resp = await fetch('/cafci-rendimiento/' + f.fondo + '/' + f.clase + '/');
+      var data = await resp.json();
+      var rend = data.rendimientos || {};
+
+      function toTNA(val, dias){
+          if(val === null || val === undefined) return null;
+          return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
+      }
+      
+      cache[fk] = {
+          tna7d:   toTNA(rend['7 días'],  7),
+          tnaMes:  toTNA(rend['1 mes'],  30),
+          tnaAnio: rend['12 meses'] || null,  // ya viene como TNA anual
+          tipo: 'T+1',
+          ok: true
+      };
+
     }
-
-    var rend = item.rendimientos || {};
-
-    cache[fk] = {
-      tna7d: rend.dias_7 ? parseFloat(rend.dias_7.tna) : null,
-      tnaMes: rend.mes_1 ? parseFloat(rend.mes_1.tna) : null,
-      tnaAnio: rend.meses_12 ? parseFloat(rend.meses_12.tna) : null,
-      ok:true
-    };
-
-  }catch(e){
-
-    console.error(e);
-
-    cache[fk] = {
-      tna7d:null,
-      tnaMes:null,
-      tnaAnio:null,
-      ok:false
-    };
+  } catch(e) {
+    console.error('Error cargando fondo', f.nombre, e);
+    cache[fk] = { tna7d:null, tnaMes:null, tnaAnio:null, ok:false };
   }
 
   renderRow(f);
   updateSummary();
 }
+
+
 
 
 function activeFondos(){return ALL.filter(f=>selected.has(k(f)));}
