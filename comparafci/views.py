@@ -17,6 +17,7 @@ def cafci_mm(request):
     return JsonResponse(r.json(), safe=False)
 
 
+
 def cafci_rendimiento(request, fondo, clase):
     url = f"https://estadisticas.cafci.org.ar/fondos/{fondo}?clase={clase}"
     headers = {
@@ -25,6 +26,8 @@ def cafci_rendimiento(request, fondo, clase):
 
     try:
         r = requests.get(url, headers=headers, timeout=15)
+        print(f"CAFCI STATUS: {r.status_code}")
+        print(f"CAFCI TEXT: {r.text[:300]}")
         soup = BeautifulSoup(r.text, "html.parser")
 
         rendimientos = {}
@@ -39,7 +42,10 @@ def cafci_rendimiento(request, fondo, clase):
                 except ValueError:
                     rendimientos[label] = None
 
+        print(f"RENDIMIENTOS: {rendimientos}")
+
     except Exception as e:
+        print(f"ERROR: {e}")
         return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({
@@ -47,6 +53,8 @@ def cafci_rendimiento(request, fondo, clase):
         "clase_id": clase,
         "rendimientos": rendimientos,
     })
+
+
 
 
 def cafci_todos(request):
