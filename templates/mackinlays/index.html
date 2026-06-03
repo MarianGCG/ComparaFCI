@@ -688,25 +688,41 @@ async function loadFondo(f){
         tipo: 'T+0',
         ok: true
       };
+
     } else {
-      var resp = await fetch('/cafci-rendimiento/' + f.fondo + '/' + f.clase + '/');
-      var data = await resp.json();
-      var rend = data.rendimientos || {};
+          var urlCafci = 'https://estadisticas.cafci.org.ar/fondos/' + f.fondo + '?clase=' + f.clase;
+          var resp = await fetch(urlCafci);
+          var html = await resp.text();
 
-      function toTNA(val, dias){
-          if(val === null || val === undefined) return null;
-          return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, 'text/html');
+          var rend = {};
+          doc.querySelectorAll('tr').forEach(function(tr){
+            var tds = tr.querySelectorAll('td');
+            if(tds.length === 2){
+              var label = tds[0].textContent.trim();
+              var valor = tds[1].textContent.trim().replace('%','').replace(',','.').trim();
+              var num = parseFloat(valor);
+              if(!isNaN(num)) rend[label] = num;
+            }
+          });
+
+          function toTNA(val, dias){
+            if(val === null || val === undefined) return null;
+            return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
+          }
+
+          cache[fk] = {
+            tna7d:   toTNA(rend['7 días'],  7),
+            tnaMes:  toTNA(rend['1 mes'],  30),
+            tnaAnio: rend['12 meses'] || null,
+            tipo: 'T+1',
+            ok: true
+          };
       }
-      
-      cache[fk] = {
-          tna7d:   toTNA(rend['7 días'],  7),
-          tnaMes:  toTNA(rend['1 mes'],  30),
-          tnaAnio: rend['12 meses'] || null,  // ya viene como TNA anual
-          tipo: 'T+1',
-          ok: true
-      };
+    
 
-    }
+
   } catch(e) {
     console.error('Error cargando fondo', f.nombre, e);
     cache[fk] = { tna7d:null, tnaMes:null, tnaAnio:null, ok:false };
