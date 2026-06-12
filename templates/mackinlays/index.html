@@ -672,25 +672,23 @@ function k(f){return f.fondo+'-'+f.clase;}
 function fmtPct(v){return(v===null||v===undefined||isNaN(v))?null:v.toFixed(2)+'%';}
 function dateStr(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
 function calcTNA(val,dias,mode){if(val===null||val===undefined)return null;var v=parseFloat(val);if(isNaN(v))return null;if(mode==='tna')return v*100;return(Math.pow(1+v,365/dias)-1)*100;}
-async function apiFetch(path){var r=await fetch('https://api.cafci.org.ar'+path,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 async function loadFondo(f){
   var fk=k(f),tna7d=null,tnaMes=null,tnaAnio=null;
   try{
-    var resp=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/ficha');
-    var rend=resp&&resp.data&&resp.data.info&&resp.data.info.diaria?resp.data.info.diaria.rendimientos:resp&&resp.data?resp.data.rendimientos:resp?resp.rendimientos:null;
-    if(rend){
-      if(rend.month){if(rend.month.tna!=null)tnaMes=calcTNA(rend.month.tna,30,'tna');else if(rend.month.rendimiento!=null)tnaMes=calcTNA(rend.month.rendimiento,30,'directo');}
-      if(rend.year){if(rend.year.tna!=null)tnaAnio=calcTNA(rend.year.tna,365,'tna');else if(rend.year.rendimiento!=null)tnaAnio=calcTNA(rend.year.rendimiento,365,'directo');}
-      if(rend.week){if(rend.week.tna!=null)tna7d=calcTNA(rend.week.tna,7,'tna');else if(rend.week.rendimiento!=null)tna7d=calcTNA(rend.week.rendimiento,7,'directo');}
+    var resp=await fetch('/cafci-mm/');
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var data=await resp.json();
+    var clases=data&&data.clases?data.clases:[];
+    var cl=clases.find(function(c){return c.clase_id===f.clase&&c.fondo_id===f.fondo;});
+    if(cl&&cl.rendimientos){
+      var rend=cl.rendimientos;
+      if(rend.dias_7&&rend.dias_7.tna!=null)tna7d=parseFloat(rend.dias_7.tna);
+      if(rend.mes_1&&rend.mes_1.tna!=null)tnaMes=parseFloat(rend.mes_1.tna);
+      if(rend.meses_12&&rend.meses_12.tna!=null)tnaAnio=parseFloat(rend.meses_12.tna);
     }
-    if(tna7d===null){try{var r7=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/rendimiento/'+dateStr(7)+'/'+dateStr(0));var val=r7&&r7.data?r7.data.rendimiento:r7?r7.rendimiento:null;if(val!=null)tna7d=Math.abs(parseFloat(val))>2?parseFloat(val):calcTNA(val,7,'directo');}catch(e){}}
-    cache[fk]={tna7d:tna7d,tnaMes:tnaMes,tnaAnio:tnaAnio,ok:true};
-  }catch(e1){
-    try{
-      var fetch3=async function(dias){var r=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/rendimiento/'+dateStr(dias)+'/'+dateStr(0));var val=r&&r.data?r.data.rendimiento:r?r.rendimiento:null;if(val===null)return null;var num=parseFloat(val);return Math.abs(num)>2?num:calcTNA(num,dias,'directo');};
-      var res=await Promise.all([fetch3(7),fetch3(30),fetch3(365)]);
-      cache[fk]={tna7d:res[0],tnaMes:res[1],tnaAnio:res[2],ok:true};
-    }catch(e2){cache[fk]={tna7d:null,tnaMes:null,tnaAnio:null,ok:false};}
+    cache[fk]={tna7d:tna7d,tnaMes:tnaMes,tnaAnio:tnaAnio,ok:cl!=null};
+  }catch(e){
+    cache[fk]={tna7d:null,tnaMes:null,tnaAnio:null,ok:false};
   }
   renderRow(f);updateSummary();
 }
@@ -961,7 +959,7 @@ function renderFondosTable(){
     tbody.appendChild(tr);
   });
 }
- 
+
 function agregarFondo(){
   var admin=document.getElementById('f-admin').value.trim();
   var nombre=document.getElementById('f-nombre').value.trim();
