@@ -668,30 +668,78 @@ function saveFondosList(){
 }
 var ALL=loadFondosList();
 var selected=new Set(),cache={};
+var CAFCI_DATA = null;
+
+
+async function loadCAFCIData(){
+  if(CAFCI_DATA) return CAFCI_DATA;
+  const r = await fetch('/cafci-mm/');
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  CAFCI_DATA = data.clases || data;
+  return CAFCI_DATA;
+}
+
+
+
 function k(f){return f.fondo+'-'+f.clase;}
 function fmtPct(v){return(v===null||v===undefined||isNaN(v))?null:v.toFixed(2)+'%';}
 function dateStr(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
 function calcTNA(val,dias,mode){if(val===null||val===undefined)return null;var v=parseFloat(val);if(isNaN(v))return null;if(mode==='tna')return v*100;return(Math.pow(1+v,365/dias)-1)*100;}
+async function apiFetch(path){var r=await fetch('https://api.cafci.org.ar'+path,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+
 async function loadFondo(f){
-  var fk=k(f),tna7d=null,tnaMes=null,tnaAnio=null;
-  try{
-    var resp=await fetch('/cafci-mm/');
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    var data=await resp.json();
-    var clases=data&&data.clases?data.clases:[];
-    var cl=clases.find(function(c){return c.clase_id===f.clase&&c.fondo_id===f.fondo;});
-    if(cl&&cl.rendimientos){
-      var rend=cl.rendimientos;
-      if(rend.dias_7&&rend.dias_7.tna!=null)tna7d=parseFloat(rend.dias_7.tna);
-      if(rend.mes_1&&rend.mes_1.tna!=null)tnaMes=parseFloat(rend.mes_1.tna);
-      if(rend.meses_12&&rend.meses_12.tna!=null)tnaAnio=parseFloat(rend.meses_12.tna);
+  var fk = k(f);
+  try {
+    var item = CAFCI_DATA && CAFCI_DATA.find(function(x){
+      return String(x.fondo_id) === String(f.fondo) &&
+             String(x.clase_id) === String(f.clase);
+    });
+
+    if(item){
+      var rend = item.rendimientos || {};
+      cache[fk] = {
+        tna7d:   rend.dias_7   ? parseFloat(rend.dias_7.tna)   : null,
+        tnaMes:  rend.mes_1    ? parseFloat(rend.mes_1.tna)    : null,
+        tnaAnio: rend.meses_12 ? parseFloat(rend.meses_12.tna) : null,
+        tipo: 'T+0',
+        ok: true
+      };
+    } else {
+      var resp = await fetch('/cafci-rendimiento/' + f.fondo + '/' + f.clase + '/');
+      var data = await resp.json();
+      var rend = data.rendimientos || {};
+
+      function toTNA(val, dias){
+          if(val === null || val === undefined) return null;
+          return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
+      }
+      
+      cache[fk] = {
+          tna7d:   toTNA(rend['7 días'],  7),
+          tnaMes:  toTNA(rend['1 mes'],  30),
+          tnaAnio: rend['12 meses'] || null,  // ya viene como TNA anual
+          tipo: 'T+1',
+          ok: true
+      };
+
     }
-    cache[fk]={tna7d:tna7d,tnaMes:tnaMes,tnaAnio:tnaAnio,ok:cl!=null};
-  }catch(e){
-    cache[fk]={tna7d:null,tnaMes:null,tnaAnio:null,ok:false};
+
+
+
+    
+  } catch(e) {
+    console.error('Error cargando fondo', f.nombre, e);
+    cache[fk] = { tna7d:null, tnaMes:null, tnaAnio:null, ok:false };
   }
-  renderRow(f);updateSummary();
+
+  renderRow(f);
+  updateSummary();
 }
+
+
+
+
 function activeFondos(){return ALL.filter(f=>selected.has(k(f)));}
 function bestOf(field){var best=null,bv=-Infinity;for(var f of activeFondos()){var v=cache[k(f)]&&cache[k(f)][field];if(v!=null&&!isNaN(v)&&v>bv){bv=v;best=f;}}return best?{f:best,v:bv}:null;}
 function buildTables(){
@@ -771,17 +819,18 @@ function toggleFundChip(chip,fk){
 function setAdminFunds(admin,on){ALL.filter(f=>f.admin===admin).forEach(function(f){if(on)selected.add(k(f));else selected.delete(k(f));});buildFundsArea();updateSelCount();}
 function updateSelCount(){var n=selected.size;document.getElementById('selCount').textContent=n>0?n+' fondo'+(n!==1?'s':'')+ ' seleccionado'+(n!==1?'s':''):'';}
 function toggleDrawer(){var dr=document.getElementById('drawer'),isOpen=dr.classList.toggle('open');document.getElementById('btnDrw').classList.toggle('active',isOpen);if(isOpen)buildDrawer();}
-function applySelection(){document.getElementById('drawer').classList.remove('open');document.getElementById('btnDrw').classList.remove('active');// ── SELECCIÓN INICIAL AUTOMÁTICA ──
-(function(){
-  ALL.forEach(function(f){
-    selected.add(k(f));
-    selectedAdmins.add(f.admin);
-  });
-})();
-buildTables();loadAll();}
+function applySelection(){document.getElementById('drawer').classList.remove('open');document.getElementById('btnDrw').classList.remove('active');buildTables();loadAll();}
 async function loadAll(){
   var btn=document.getElementById('btnRef');btn.disabled=true;btn.innerHTML='<span class="spin">&#x21BB;</span> Actualizando&hellip;';
-  var active=activeFondos();for(var f of active)delete cache[k(f)];
+  var active=activeFondos();
+  for(var f of active)delete cache[k(f)];
+  try{
+    await loadCAFCIData();
+  }catch(e){
+    console.error('Error cargando CAFCI',e);
+  }
+
+
   for(var f of active){var row=document.getElementById('row-'+k(f));if(row)row.innerHTML=rowHTML(f);}
   await Promise.all(active.map(f=>loadFondo(f)));
   var now=new Date();
@@ -1029,15 +1078,12 @@ function imprimirPDF(version){
     var G0=rows.filter(function(r){return r.tipo==='T+0';}).reduce(function(a,r){return a+r.ganancia;},0);
     var G1=rows.filter(function(r){return r.tipo==='T+1';}).reduce(function(a,r){return a+r.ganancia;},0);
     var c=escColors[ii];
-    var anualEsc=(G-A)*12;
-    var liquidadoEsc=capitales[ii]*(ii===0?4:ii===1?2:1);
-    summaryCards+='<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between">';
-    summaryCards+='<div>';
-    summaryCards+='<div style="font-size:11px;font-weight:700;color:'+c.txt+';margin-bottom:4px">'+c.label+'</div>';
-    summaryCards+='<div style="font-size:10px;color:#6b7280;margin-bottom:2px">Proyecci\xf3n anualizada</div>';
-    summaryCards+='<div style="font-size:10px;color:#b8922e">Liquidado: '+fmtN(liquidadoEsc)+'</div>';
-    summaryCards+='</div>';
-    summaryCards+='<div style="font-size:28px;font-weight:700;color:#b8922e;letter-spacing:-1px">'+fmtN(anualEsc)+'</div>';
+    summaryCards+='<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:12px 14px">';
+    summaryCards+='<div style="font-size:11px;font-weight:700;color:'+c.txt+';margin-bottom:8px">'+c.label+'</div>';
+    summaryCards+='<div style="font-size:18px;font-weight:700;color:#166534;margin-bottom:6px">'+fmtN(G-A)+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#6b7280">Capital: '+fmtN(capitales[ii])+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#5b21b6">T+0: '+fmtN(G0)+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#1e40af">T+1: '+fmtN(G1)+'</div>';
     summaryCards+='</div>';
   });
 
@@ -1091,9 +1137,7 @@ function imprimirPDF(version){
     var escLabels=['Semanal','Quincenal','Mensual'];
     var escColors2=[{bg:'#eff6ff',border:'#bfdbfe',txt:'#1e40af'},{bg:'#f0fdf4',border:'#bbf7d0',txt:'#166534'},{bg:'#fffbeb',border:'#fde68a',txt:'#92400e'}];
     var arT0=tasas.ar0,arT1=tasas.ar1;
-    // Ganancia mensual total (bruta - aranceles)
     var ganMensual=netaTotal;
-    // Comisiones por escenario
     var comRows='';
     allRows.forEach(function(rows,ii){
       if(!capitales[ii])return;
@@ -1102,13 +1146,12 @@ function imprimirPDF(version){
       comRows+='<tr>'
         +'<td><span style="background:'+c.bg+';color:'+c.txt+';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">'+escLabels[ii]+'</span></td>'
         +'<td class=r>'+fmtN(capitales[ii])+'</td>'
-        +'<td class=r>'+(ii===0?arT0:ii===1?arT1+' (T+1 si aplica)':arT1)+'%</td>'
+        +'<td class=r>'+(ii===0?arT0:arT1)+'%</td>'
         +'<td class=r style="color:#b8922e;font-weight:700">'+fmtN(comEsc)+'</td>'
         +'</tr>';
     });
     var totCom=allRows.reduce(function(a,r){return a+r.reduce(function(b,x){return b+x.arancel;},0);},0);
     comRows+='<tr style="background:#f9fafb;font-weight:700"><td colspan=3>Total comisiones</td><td class=r style="color:#b8922e">'+fmtN(totCom)+'</td></tr>';
-
     var prodBlock='<div style="margin-bottom:24px">'
       +'<h2 style="font-size:13px;font-weight:700;margin:0 0 12px;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px">Resultados del Productor</h2>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
@@ -1268,8 +1311,14 @@ function imprimirPDFb(){
 
 document.getElementById('tab-comparador').addEventListener('click', function(){ switchTab('comparador'); });
 document.getElementById('tab-calc').addEventListener('click', function(){ switchTab('calc'); });
-document.getElementById('tab-aranceles').addEventListener('click', function(){ switchTab('aranceles'); });
-document.getElementById('tab-fondos').addEventListener('click', function(){ switchTab('fondos'); });
+document.getElementById('tab-parametros').addEventListener('click', function(){ switchTab('parametros'); });
+var tabFondos = document.getElementById('tab-fondos');
+if(tabFondos){
+    tabFondos.addEventListener('click', function(){
+        switchTab('fondos');
+    });
+}
+
 
 // Tab navigation — inline onclick as fallback
 (function(){
@@ -1280,6 +1329,5 @@ document.getElementById('tab-fondos').addEventListener('click', function(){ swit
   });
 })();
 </script>
-
 </body>
 </html>
