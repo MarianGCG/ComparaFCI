@@ -298,7 +298,7 @@ to{opacity:1;transform:translateY(0)}}
   <div class="hdr-actions" id="hdr-comp" style="display:none"></div>
   <div class="hdr-actions" id="hdr-aranceles" style="display:none"></div>
   <div class="hdr-actions" id="hdr-calc" style="display:none">
-    <button class="btn btn-gold" id="btnPDF" style="display:none" onclick="document.getElementById('modal-pdf').style.display='flex'">&#x2193; Exportar PDF</button>
+    <button class="btn btn-gold" id="btnPDF" style="display:none" onclick="imprimirPDF()">&#x2193; Exportar PDF</button>
     <button class="btn btn-ghost" id="btnPDFb" style="display:none" onclick="imprimirPDFb()">&#x2193; Exportar PDF</button>
   </div>
 </div>
@@ -378,10 +378,11 @@ to{opacity:1;transform:translateY(0)}}
       </div>
       <div style="display:flex;gap:10px;margin-bottom:0">
         <button class="btn-calc" style="flex:1" onclick="computeAndShow()">Calcular resultado</button>
-        <button class="btn btn-ghost" id="btnPDF" onclick="document.getElementById('modal-pdf').style.display='flex'" style="display:none;align-self:stretch;padding:0 20px;font-size:13px">&#x2193; Exportar PDF</button>
+        <button class="btn btn-ghost" id="btnPDF" onclick="imprimirPDF()" style="display:none;align-self:stretch;padding:0 20px;font-size:13px">&#x2193; Exportar PDF</button>
       </div>
       <div id="results-a" style="display:none;margin-top:24px">
-      <div class="anual-box"><div><div class="anual-label">Proyecci&oacute;n anualizada</div><div class="anual-sub">Ganancia mensual &times; 12</div><div id="recaudacionChico" style="font-family:var(--mono);font-size:11px;color:var(--gold2);margin-top:6px;opacity:.85">Liquidado: &mdash;</div></div><div class="anual-val" id="anualVal">&mdash;</div></div>
+      <div class="totales"><h3>Consolidado del mes</h3><div class="tot-grid" id="totgrid"></div></div>
+      <div class="anual-box"><div><div class="anual-label">Proyecci&oacute;n anualizada</div><div class="anual-sub">Ganancia mensual &times; 12</div></div><div class="anual-val" id="anualVal">&mdash;</div></div>
       <div class="detalle">
         <h3>Movimientos del mes</h3>
         <div class="table-wrap"><div id="tablaUnificada"></div></div>
@@ -585,24 +586,6 @@ to{opacity:1;transform:translateY(0)}}
 </div>
 
 
-
-<!-- MODAL VERSION PDF -->
-<div id="modal-pdf" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
-  <div style="background:var(--bg2);border-radius:14px;padding:32px 36px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-width:380px;width:90%;text-align:center">
-    <div style="font-family:var(--serif);font-size:18px;font-weight:700;margin-bottom:8px">Exportar PDF</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:28px">¿Qué versión querés generar?</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button onclick="imprimirPDF('cliente')" style="padding:13px 20px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer">
-        👤 Versión Cliente
-      </button>
-      <button onclick="imprimirPDF('productor')" style="padding:13px 20px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:9px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer">
-        💼 Versión Productor
-      </button>
-    </div>
-    <button onclick="document.getElementById('modal-pdf').style.display='none'" style="margin-top:18px;background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer">Cancelar</button>
-  </div>
-</div>
-
 <script>
 // ── NAV PRINCIPAL ──
 
@@ -651,8 +634,8 @@ var ALL_DEFAULT=[
   {admin:"BBVA",nombre:"FBA Ahorro Pesos",fondo:287,clase:287},
   {admin:"Cocos",nombre:"Pesos Plus",fondo:1651,clase:5496},
   {admin:"Cocos",nombre:"Cocos Ahorro",fondo:1469,clase:4337},
-  {admin:"ICBC",nombre:"Alpha Pesos",fondo:344,clase:571},
-  {admin:"ICBC",nombre:"Alpha Pesos Plus",fondo:472,clase:929},
+  {admin:"ICBC",nombre:"Alpha Pesos",fondo:344,clase:569},
+  {admin:"ICBC",nombre:"Alpha Pesos Plus",fondo:472,clase:928},
   {admin:"Bull Brokers",nombre:"BM Smart Money Market",fondo:1239,clase:3442},
   {admin:"Bull Brokers",nombre:"BM Smart Corto Plazo",fondo:1503,clase:4497},
   {admin:"Supervielle",nombre:"Premier Renta Fija Ahorro",fondo:282,clase:282},
@@ -668,32 +651,78 @@ function saveFondosList(){
 }
 var ALL=loadFondosList();
 var selected=new Set(),cache={};
+var CAFCI_DATA = null;
+
+
+async function loadCAFCIData(){
+  if(CAFCI_DATA) return CAFCI_DATA;
+  const r = await fetch('/cafci-mm/');
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  CAFCI_DATA = data.clases || data;
+  return CAFCI_DATA;
+}
+
+
+
 function k(f){return f.fondo+'-'+f.clase;}
 function fmtPct(v){return(v===null||v===undefined||isNaN(v))?null:v.toFixed(2)+'%';}
 function dateStr(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
 function calcTNA(val,dias,mode){if(val===null||val===undefined)return null;var v=parseFloat(val);if(isNaN(v))return null;if(mode==='tna')return v*100;return(Math.pow(1+v,365/dias)-1)*100;}
 async function apiFetch(path){var r=await fetch('https://api.cafci.org.ar'+path,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+
 async function loadFondo(f){
-  var fk=k(f),tna7d=null,tnaMes=null,tnaAnio=null;
-  try{
-    var resp=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/ficha');
-    var rend=resp&&resp.data&&resp.data.info&&resp.data.info.diaria?resp.data.info.diaria.rendimientos:resp&&resp.data?resp.data.rendimientos:resp?resp.rendimientos:null;
-    if(rend){
-      if(rend.month){if(rend.month.tna!=null)tnaMes=calcTNA(rend.month.tna,30,'tna');else if(rend.month.rendimiento!=null)tnaMes=calcTNA(rend.month.rendimiento,30,'directo');}
-      if(rend.year){if(rend.year.tna!=null)tnaAnio=calcTNA(rend.year.tna,365,'tna');else if(rend.year.rendimiento!=null)tnaAnio=calcTNA(rend.year.rendimiento,365,'directo');}
-      if(rend.week){if(rend.week.tna!=null)tna7d=calcTNA(rend.week.tna,7,'tna');else if(rend.week.rendimiento!=null)tna7d=calcTNA(rend.week.rendimiento,7,'directo');}
+  var fk = k(f);
+  try {
+    var item = CAFCI_DATA && CAFCI_DATA.find(function(x){
+      return String(x.fondo_id) === String(f.fondo) &&
+             String(x.clase_id) === String(f.clase);
+    });
+
+    if(item){
+      var rend = item.rendimientos || {};
+      cache[fk] = {
+        tna7d:   rend.dias_7   ? parseFloat(rend.dias_7.tna)   : null,
+        tnaMes:  rend.mes_1    ? parseFloat(rend.mes_1.tna)    : null,
+        tnaAnio: rend.meses_12 ? parseFloat(rend.meses_12.tna) : null,
+        tipo: 'T+0',
+        ok: true
+      };
+    } else {
+      var resp = await fetch('/cafci-rendimiento/' + f.fondo + '/' + f.clase + '/');
+      var data = await resp.json();
+      var rend = data.rendimientos || {};
+
+      function toTNA(val, dias){
+          if(val === null || val === undefined) return null;
+          return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
+      }
+      
+      cache[fk] = {
+          tna7d:   toTNA(rend['7 días'],  7),
+          tnaMes:  toTNA(rend['1 mes'],  30),
+          tnaAnio: rend['12 meses'] || null,  // ya viene como TNA anual
+          tipo: 'T+1',
+          ok: true
+      };
+
     }
-    if(tna7d===null){try{var r7=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/rendimiento/'+dateStr(7)+'/'+dateStr(0));var val=r7&&r7.data?r7.data.rendimiento:r7?r7.rendimiento:null;if(val!=null)tna7d=Math.abs(parseFloat(val))>2?parseFloat(val):calcTNA(val,7,'directo');}catch(e){}}
-    cache[fk]={tna7d:tna7d,tnaMes:tnaMes,tnaAnio:tnaAnio,ok:true};
-  }catch(e1){
-    try{
-      var fetch3=async function(dias){var r=await apiFetch('/fondo/'+f.fondo+'/clase/'+f.clase+'/rendimiento/'+dateStr(dias)+'/'+dateStr(0));var val=r&&r.data?r.data.rendimiento:r?r.rendimiento:null;if(val===null)return null;var num=parseFloat(val);return Math.abs(num)>2?num:calcTNA(num,dias,'directo');};
-      var res=await Promise.all([fetch3(7),fetch3(30),fetch3(365)]);
-      cache[fk]={tna7d:res[0],tnaMes:res[1],tnaAnio:res[2],ok:true};
-    }catch(e2){cache[fk]={tna7d:null,tnaMes:null,tnaAnio:null,ok:false};}
+
+
+
+    
+  } catch(e) {
+    console.error('Error cargando fondo', f.nombre, e);
+    cache[fk] = { tna7d:null, tnaMes:null, tnaAnio:null, ok:false };
   }
-  renderRow(f);updateSummary();
+
+  renderRow(f);
+  updateSummary();
 }
+
+
+
+
 function activeFondos(){return ALL.filter(f=>selected.has(k(f)));}
 function bestOf(field){var best=null,bv=-Infinity;for(var f of activeFondos()){var v=cache[k(f)]&&cache[k(f)][field];if(v!=null&&!isNaN(v)&&v>bv){bv=v;best=f;}}return best?{f:best,v:bv}:null;}
 function buildTables(){
@@ -776,7 +805,15 @@ function toggleDrawer(){var dr=document.getElementById('drawer'),isOpen=dr.class
 function applySelection(){document.getElementById('drawer').classList.remove('open');document.getElementById('btnDrw').classList.remove('active');buildTables();loadAll();}
 async function loadAll(){
   var btn=document.getElementById('btnRef');btn.disabled=true;btn.innerHTML='<span class="spin">&#x21BB;</span> Actualizando&hellip;';
-  var active=activeFondos();for(var f of active)delete cache[k(f)];
+  var active=activeFondos();
+  for(var f of active)delete cache[k(f)];
+  try{
+    await loadCAFCIData();
+  }catch(e){
+    console.error('Error cargando CAFCI',e);
+  }
+
+
   for(var f of active){var row=document.getElementById('row-'+k(f));if(row)row.innerHTML=rowHTML(f);}
   await Promise.all(active.map(f=>loadFondo(f)));
   var now=new Date();
@@ -858,7 +895,8 @@ function compute(){
   var mult=[4,2,1],totC=capitales.reduce(function(a,c,i){return a+c*mult[i];},0),netaTotal=totG-totA;
   var nTL=showAran?'Ganancia neta total':'Ganancia total del mes';
   var bCol=showAran?'<div class="tot-item"><div class="k">Ganancia bruta total</div><div class="v pos">'+fmt(totG)+'</div></div>':'';
-  var recaudacion=capitales[0]*4+capitales[1]*2+capitales[2];document.getElementById('recaudacionChico').textContent='Liquidado: '+fmt(recaudacion);
+  document.getElementById('totgrid').style.gridTemplateColumns='repeat('+(showAran?5:4)+',1fr)';
+  document.getElementById('totgrid').innerHTML='<div class="tot-item"><div class="k">'+nTL+'</div><div class="v pos">'+fmt(netaTotal)+'</div></div>'+bCol+'<div class="tot-item"><div class="k">Ganancia <span class="bt0">T+0</span></div><div class="v t0">'+fmt(totG0)+'</div></div><div class="tot-item"><div class="k">Ganancia <span class="bt1">T+1</span></div><div class="v t1">'+fmt(totG1)+'</div></div><div class="tot-item"><div class="k">Capital mensual total</div><div class="v">'+fmt(totC)+'</div></div>';
   if(showAran){var totA0=allRows.reduce(function(a,r){return a+r.filter(function(x){return x.tipo==='T+0';}).reduce(function(b,x){return b+x.arancel;},0);},0);var totA1=allRows.reduce(function(a,r){return a+r.filter(function(x){return x.tipo==='T+1';}).reduce(function(b,x){return b+x.arancel;},0);},0);document.getElementById('arangrid').innerHTML='<div class="aran-item"><div class="k">Total aranceles</div><div class="v">'+fmt(totA)+'</div></div><div class="aran-item"><div class="k">Arancel s/ gan. bruta</div><div class="v">'+fmtP(totA/totG*100)+'</div></div><div class="aran-item"><div class="k">Arancel T+0</div><div class="v">'+fmt(totA0)+'</div></div><div class="aran-item"><div class="k">Arancel T+1</div><div class="v">'+fmt(totA1)+'</div></div>';}
   document.getElementById('anualVal').textContent=fmt(netaTotal*12);
   document.getElementById('tablaUnificada').innerHTML=renderTablaUnificada(allRows,capitales);
@@ -1006,8 +1044,7 @@ function arancelChanged(){if(document.getElementById('results-a').style.display!
 function computeAndShow(){compute();document.getElementById('results-a').style.display='';document.getElementById('btnPDF').style.display='';}
 moneyInput('mS','hintS',0);moneyInput('mQ','hintQ',1);moneyInput('mM','hintM',2);
 setModo('cliente');
-function imprimirPDF(version){
-  document.getElementById('modal-pdf').style.display='none';
+function imprimirPDF(){
   var tasas=getTasas(),capitales=[parseCapital('mS'),parseCapital('mQ'),parseCapital('mM')];
   var allRows=capitales.map(function(c,ii){return buildRows(ii,c,tasas);});
   var totG=allRows.reduce(function(a,r){return a+r.reduce(function(b,x){return b+x.ganancia;},0);},0);
@@ -1024,15 +1061,12 @@ function imprimirPDF(version){
     var G0=rows.filter(function(r){return r.tipo==='T+0';}).reduce(function(a,r){return a+r.ganancia;},0);
     var G1=rows.filter(function(r){return r.tipo==='T+1';}).reduce(function(a,r){return a+r.ganancia;},0);
     var c=escColors[ii];
-    var anualEsc=(G-A)*12;
-    var liquidadoEsc=capitales[ii]*(ii===0?4:ii===1?2:1);
-    summaryCards+='<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between">';
-    summaryCards+='<div>';
-    summaryCards+='<div style="font-size:11px;font-weight:700;color:'+c.txt+';margin-bottom:4px">'+c.label+'</div>';
-    summaryCards+='<div style="font-size:10px;color:#6b7280;margin-bottom:2px">Proyecci\xf3n anualizada</div>';
-    summaryCards+='<div style="font-size:10px;color:#b8922e">Liquidado: '+fmtN(liquidadoEsc)+'</div>';
-    summaryCards+='</div>';
-    summaryCards+='<div style="font-size:28px;font-weight:700;color:#b8922e;letter-spacing:-1px">'+fmtN(anualEsc)+'</div>';
+    summaryCards+='<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:12px 14px">';
+    summaryCards+='<div style="font-size:11px;font-weight:700;color:'+c.txt+';margin-bottom:8px">'+c.label+'</div>';
+    summaryCards+='<div style="font-size:18px;font-weight:700;color:#166534;margin-bottom:6px">'+fmtN(G-A)+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#6b7280">Capital: '+fmtN(capitales[ii])+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#5b21b6">T+0: '+fmtN(G0)+'</div>';
+    summaryCards+='<div style="font-size:10px;color:#1e40af">T+1: '+fmtN(G1)+'</div>';
     summaryCards+='</div>';
   });
 
@@ -1069,65 +1103,16 @@ function imprimirPDF(version){
 
   var body='<h1>Mackinlay\u2019s \u2014 Simulador de Fondos \xb7 Registros Automotores</h1>'
     +'<div class=meta>Generado: '+new Date().toLocaleDateString('es-AR')+' | TNA T+0: '+tasas.tna0+'% | TNA T+1: '+tasas.tna1+'% | Arancel T+0: '+ar.ar0+'% | Arancel T+1: '+ar.ar1+'%</div>'
-    +'<div style="background:linear-gradient(135deg,rgba(184,146,46,.10) 0%,rgba(184,146,46,.04) 100%);border:1px solid rgba(184,146,46,.4);border-radius:12px;padding:28px 36px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'
-    +'<div>'
-    +'<div style="font-size:13px;font-weight:700;color:#b8922e;margin-bottom:4px">Proyecci\xf3n anualizada</div>'
-    +'<div style="font-size:11px;color:#c9a84c">Ganancia mensual \xd7 12</div>'
-    +'<div style="font-size:11px;color:#b8922e;margin-top:6px">Liquidado: '+fmtN(capitales[0]*4+capitales[1]*2+capitales[2])+'</div>'
-    +'</div>'
-    +'<div style="font-size:48px;font-weight:700;color:#b8922e;letter-spacing:-2px">'+fmtN(netaTotal*12)+'</div>'
+    +'<h2>Resultados por escenario</h2>'
+    +'<div class=cards>'+summaryCards+'</div>'
+    +'<div class=totrow>'
+    +'<div class=tot><div class=k>Ganancia total del mes</div><div class=v style="color:#166534">'+fmtN(netaTotal)+'</div></div>'
+    +'<div class=tot><div class=k>Proyecci\xf3n anual (\xd712)</div><div class=v style="color:#b8922e">'+fmtN(netaTotal*12)+'</div></div>'
+    +'<div class=tot><div class=k>TNA T+0</div><div class=v>'+tasas.tna0+'%</div></div>'
+    +'<div class=tot><div class=k>TNA T+1</div><div class=v>'+tasas.tna1+'%</div></div>'
     +'</div>'
     +'<h2>Detalle de operaciones</h2>'
     +tabla;
-
-
-  // ── BLOQUE PRODUCTOR ──
-  if(version==='productor'){
-    var escLabels=['Semanal','Quincenal','Mensual'];
-    var escColors2=[{bg:'#eff6ff',border:'#bfdbfe',txt:'#1e40af'},{bg:'#f0fdf4',border:'#bbf7d0',txt:'#166534'},{bg:'#fffbeb',border:'#fde68a',txt:'#92400e'}];
-    var arT0=tasas.ar0,arT1=tasas.ar1;
-    // Ganancia mensual total (bruta - aranceles)
-    var ganMensual=netaTotal;
-    // Comisiones por escenario
-    var comRows='';
-    allRows.forEach(function(rows,ii){
-      if(!capitales[ii])return;
-      var comEsc=rows.reduce(function(a,r){return a+r.arancel;},0);
-      var c=escColors2[ii];
-      comRows+='<tr>'
-        +'<td><span style="background:'+c.bg+';color:'+c.txt+';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">'+escLabels[ii]+'</span></td>'
-        +'<td class=r>'+fmtN(capitales[ii])+'</td>'
-        +'<td class=r>'+(ii===0?arT0:ii===1?arT1+' (T+1 si aplica)':arT1)+'%</td>'
-        +'<td class=r style="color:#b8922e;font-weight:700">'+fmtN(comEsc)+'</td>'
-        +'</tr>';
-    });
-    var totCom=allRows.reduce(function(a,r){return a+r.reduce(function(b,x){return b+x.arancel;},0);},0);
-    comRows+='<tr style="background:#f9fafb;font-weight:700"><td colspan=3>Total comisiones</td><td class=r style="color:#b8922e">'+fmtN(totCom)+'</td></tr>';
-
-    var prodBlock='<div style="margin-bottom:24px">'
-      +'<h2 style="font-size:13px;font-weight:700;margin:0 0 12px;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px">Resultados del Productor</h2>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px">'
-      +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Ganancia mensual cliente (neta)</div>'
-      +'<div style="font-size:20px;font-weight:700;color:#166534">'+fmtN(ganMensual)+'</div>'
-      +'</div>'
-      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px">'
-      +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Total comisiones del mes</div>'
-      +'<div style="font-size:20px;font-weight:700;color:#b8922e">'+fmtN(totCom)+'</div>'
-      +'</div>'
-      +'</div>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
-      +'<thead><tr style="background:#f9fafb">'
-      +'<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">Escenario</th>'
-      +'<th style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">Capital</th>'
-      +'<th style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">Arancel TNA</th>'
-      +'<th style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">Comisi\xf3n</th>'
-      +'</tr></thead>'
-      +'<tbody>'+comRows+'</tbody>'
-      +'</table>'
-      +'</div>';
-    body = prodBlock + body;
-  }
 
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset=UTF-8><title>Simulador Registros</title><style>'+css+'</style></head><body>'+body+'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/scr'+'ipt></body></html>');
@@ -1263,8 +1248,14 @@ function imprimirPDFb(){
 
 document.getElementById('tab-comparador').addEventListener('click', function(){ switchTab('comparador'); });
 document.getElementById('tab-calc').addEventListener('click', function(){ switchTab('calc'); });
-document.getElementById('tab-aranceles').addEventListener('click', function(){ switchTab('aranceles'); });
-document.getElementById('tab-fondos').addEventListener('click', function(){ switchTab('fondos'); });
+document.getElementById('tab-parametros').addEventListener('click', function(){ switchTab('parametros'); });
+var tabFondos = document.getElementById('tab-fondos');
+if(tabFondos){
+    tabFondos.addEventListener('click', function(){
+        switchTab('fondos');
+    });
+}
+
 
 // Tab navigation — inline onclick as fallback
 (function(){
@@ -1275,6 +1266,5 @@ document.getElementById('tab-fondos').addEventListener('click', function(){ swit
   });
 })();
 </script>
-
 </body>
 </html>
