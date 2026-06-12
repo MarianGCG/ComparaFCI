@@ -773,7 +773,14 @@ function toggleFundChip(chip,fk){
 function setAdminFunds(admin,on){ALL.filter(f=>f.admin===admin).forEach(function(f){if(on)selected.add(k(f));else selected.delete(k(f));});buildFundsArea();updateSelCount();}
 function updateSelCount(){var n=selected.size;document.getElementById('selCount').textContent=n>0?n+' fondo'+(n!==1?'s':'')+ ' seleccionado'+(n!==1?'s':''):'';}
 function toggleDrawer(){var dr=document.getElementById('drawer'),isOpen=dr.classList.toggle('open');document.getElementById('btnDrw').classList.toggle('active',isOpen);if(isOpen)buildDrawer();}
-function applySelection(){document.getElementById('drawer').classList.remove('open');document.getElementById('btnDrw').classList.remove('active');buildTables();loadAll();}
+function applySelection(){document.getElementById('drawer').classList.remove('open');document.getElementById('btnDrw').classList.remove('active');// ── SELECCIÓN INICIAL AUTOMÁTICA ──
+(function(){
+  ALL.forEach(function(f){
+    selected.add(k(f));
+    selectedAdmins.add(f.admin);
+  });
+})();
+buildTables();loadAll();}
 async function loadAll(){
   var btn=document.getElementById('btnRef');btn.disabled=true;btn.innerHTML='<span class="spin">&#x21BB;</span> Actualizando&hellip;';
   var active=activeFondos();for(var f of active)delete cache[k(f)];
