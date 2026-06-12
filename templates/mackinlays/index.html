@@ -710,15 +710,17 @@ async function loadFondo(f){
       var data = await resp.json();
       var rend = data.rendimientos || {};
 
-      function toTNA(val, dias){
+      function toTNASmart(val, dias){
           if(val === null || val === undefined || val === '') return null;
           var n = parseFloat(val);
           if(isNaN(n)) return null;
+          // Si el valor es > 5 ya es TNA directa; si es <= 5 es rendimiento del período
+          if(Math.abs(n) > 5) return n;
           return (Math.pow(1 + n/100, 365/dias) - 1) * 100;
       }
       cache[fk] = {
-          tna7d:   toTNA(rend['7 días'],  7),
-          tnaMes:  toTNA(rend['1 mes'],  30),
+          tna7d:   toTNASmart(rend['7 días'],  7),
+          tnaMes:  toTNASmart(rend['1 mes'],  30),
           tnaAnio: rend['12 meses'] != null ? parseFloat(rend['12 meses']) : null,
           tipo: 'T+1',
           ok: true
