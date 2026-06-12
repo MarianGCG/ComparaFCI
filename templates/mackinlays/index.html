@@ -53,7 +53,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 /* DRAWER */
 .drawer{background:var(--bg3);border-bottom:1px solid var(--border);overflow:hidden;max-height:0;transition:max-height .45s ease;position:relative;z-index:1}
-.drawer.open{max-height:900px}
+.drawer.open{max-height:70vh;overflow-y:auto}
 .drawer-inner{padding:28px 44px 32px}
 .step-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .step-num{width:20px;height:20px;border-radius:50%;background:var(--bg4);color:var(--muted);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border2)}
@@ -81,7 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .fchip.sel{background:var(--gold-bg);border-color:var(--gold2);color:var(--gold)}
 .fchip .fck{font-size:10px;opacity:0;transition:opacity .1s;width:10px}
 .fchip.sel .fck{opacity:1}
-.drawer-foot{display:flex;gap:10px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center}
+.drawer-foot{display:flex;gap:10px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;bottom:0;background:var(--bg3);z-index:2}
 .sel-count{font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:auto}
 
 /* COMP */
@@ -710,15 +710,10 @@ async function loadFondo(f){
       var data = await resp.json();
       var rend = data.rendimientos || {};
 
-      function toTNA(val, dias){
-          if(val === null || val === undefined) return null;
-          return (Math.pow(1 + val/100, 365/dias) - 1) * 100;
-      }
-      
       cache[fk] = {
-          tna7d:   toTNA(rend['7 días'],  7),
-          tnaMes:  toTNA(rend['1 mes'],  30),
-          tnaAnio: rend['12 meses'] || null,  // ya viene como TNA anual
+          tna7d:   rend['7 días']   != null ? parseFloat(rend['7 días'])   : null,
+          tnaMes:  rend['1 mes']    != null ? parseFloat(rend['1 mes'])    : null,
+          tnaAnio: rend['12 meses'] != null ? parseFloat(rend['12 meses']) : null,
           tipo: 'T+1',
           ok: true
       };
