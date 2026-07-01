@@ -1073,66 +1073,48 @@ function imprimirPDF(version){
   var ar=getAranceles();
   var fmtN=function(n){return '$ '+Math.round(n).toLocaleString('es-AR');};
 
-  // Build summary
-  var escColors=[{bg:'#eff6ff',border:'#bfdbfe',txt:'#1e40af',label:'Semanal'},{bg:'#f0fdf4',border:'#bbf7d0',txt:'#166534',label:'Quincenal'},{bg:'#fffbeb',border:'#fde68a',txt:'#92400e',label:'Mensual'}];
-  var summaryCards='';
-  allRows.forEach(function(rows,ii){
-    var G=rows.reduce(function(a,r){return a+r.ganancia;},0),A=rows.reduce(function(a,r){return a+r.arancel;},0);
-    var G0=rows.filter(function(r){return r.tipo==='T+0';}).reduce(function(a,r){return a+r.ganancia;},0);
-    var G1=rows.filter(function(r){return r.tipo==='T+1';}).reduce(function(a,r){return a+r.ganancia;},0);
-    var c=escColors[ii];
-    summaryCards+='<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:12px 14px">';
-    summaryCards+='<div style="font-size:11px;font-weight:700;color:'+c.txt+';margin-bottom:8px">'+c.label+'</div>';
-    summaryCards+='<div style="font-size:18px;font-weight:700;color:#166534;margin-bottom:6px">'+fmtN(G-A)+'</div>';
-    summaryCards+='<div style="font-size:10px;color:#6b7280">Capital: '+fmtN(capitales[ii])+'</div>';
-    summaryCards+='<div style="font-size:10px;color:#5b21b6">T+0: '+fmtN(G0)+'</div>';
-    summaryCards+='<div style="font-size:10px;color:#1e40af">T+1: '+fmtN(G1)+'</div>';
-    summaryCards+='</div>';
-  });
-
-  var tabla=renderTablaUnificada(allRows,capitales);
-
-  var css='body{font-family:system-ui,sans-serif;font-size:12px;padding:24px;color:#1a1a1a}'
-    +'h1{font-size:16px;margin-bottom:4px}'
-    +'.meta{font-size:11px;color:#888;margin-bottom:18px}'
-    +'h2{font-size:13px;font-weight:700;margin:16px 0 10px;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px}'
-    +'.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}'
-    +'.totrow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}'
-    +'.tot{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px}'
-    +'.tot .k{font-size:10px;color:#6b7280;margin-bottom:4px}'
-    +'.tot .v{font-size:16px;font-weight:700}'
+  var css='body{font-family:system-ui,sans-serif;font-size:12px;padding:32px;color:#1a1a1a}'
+    +'h1{font-size:18px;margin-bottom:4px}'
+    +'.meta{font-size:11px;color:#888}'
+    +'h2{font-size:13px;font-weight:700;margin:20px 0 12px;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px}'
     +'table{width:100%;border-collapse:collapse;font-size:11px}'
     +'th{text-align:left;padding:7px 8px;border-bottom:1px solid #ddd;background:#f5f5f5;font-size:10px;color:#666}'
     +'td{padding:5px 8px;border-bottom:0.5px solid #eee}'
-    +'.pos{color:#166534;font-weight:600}'
-    +'.sub td{background:#f9f9f9;font-weight:600}'
-    +'.esc-sep td{background:#fffbe6;font-weight:700}'
-    +'.badge-s{background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}'
-    +'.badge-q{background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}'
-    +'.badge-m{background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}'
-    +'.bt0{background:#ede9fe;color:#5b21b6;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700}'
-    +'.bt1{background:#dbeafe;color:#1e40af;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700}'
-    +'.bw1{background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}'
-    +'.bw2{background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}'
-    +'.bw3{background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}'
-    +'.bw4{background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}'
-    +'.ct0{color:#5b21b6;font-weight:600}'
-    +'.ct1{color:#1e40af;font-weight:600}'
-    +'.t0-row td{background:#faf5ff}'
-    +'.t1-row td{background:#f0f9ff}';
+    +'.r{text-align:right;font-variant-numeric:tabular-nums}'
+    +'.param-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px}'
+    +'.param-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px}'
+    +'.param-card .k{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}'
+    +'.param-card .v{font-size:18px;font-weight:700;color:#374151}'
+    +'.param-card.gold{background:#fffbeb;border-color:#fde68a}'
+    +'.param-card.gold .v{color:#b8922e}';
 
-  var body='<h1>Mackinlay\u2019s \u2014 Simulador de Fondos \xb7 Registros Automotores</h1>'
-    +'<div class=meta>Generado: '+new Date().toLocaleDateString('es-AR')+' | TNA T+0: '+tasas.tna0+'% | TNA T+1: '+tasas.tna1+'% | Arancel T+0: '+ar.ar0+'% | Arancel T+1: '+ar.ar1+'%</div>'
-    +'<div style="background:linear-gradient(135deg,rgba(184,146,46,.10) 0%,rgba(184,146,46,.04) 100%);border:1px solid rgba(184,146,46,.4);border-radius:12px;padding:28px 36px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'
-    +'<div>'
-    +'<div style="font-size:13px;font-weight:700;color:#b8922e;margin-bottom:4px">Proyecci\xf3n anualizada</div>'
-    +'<div style="font-size:11px;color:#c9a84c">Ganancia mensual \xd7 12</div>'
-    +'<div style="font-size:11px;color:#b8922e;margin-top:6px">Liquidado: '+fmtN(capitales[0]*4+capitales[1]*2+capitales[2])+'</div>'
+  var liquidadoTotal=capitales[0]*4+capitales[1]*2+capitales[2];
+  var rightBoxLabel=version==='productor'?'Resultados del Productor':'Resultados del Cliente';
+
+  var heroBlock='<div style="text-align:center;padding:8px 0 4px">'
+    +'<div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:#b8922e;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">'+rightBoxLabel+'</div>'
+    +'<div style="font-size:13px;color:#6b7280;margin-bottom:4px">Proyecci\xf3n anualizada</div>'
+    +'<div style="font-size:64px;font-weight:800;color:#b8922e;letter-spacing:-2px;line-height:1">'+fmtN(netaTotal*12)+'</div>'
+    +'<div style="font-size:12px;color:#c9a84c;margin-top:8px">Ganancia mensual neta \xd7 12</div>'
+    +'</div>';
+
+  var paramCards='<div class="param-grid">'
+    +'<div class="param-card"><div class=k>TNA fondo T+0</div><div class=v>'+tasas.tna0+'%</div></div>'
+    +'<div class="param-card"><div class=k>TNA fondo T+1</div><div class=v>'+tasas.tna1+'%</div></div>'
+    +'<div class="param-card"><div class=k>Arancel T+0 / T+1</div><div class=v>'+ar.ar0+'% / '+ar.ar1+'%</div></div>'
+    +'<div class="param-card gold"><div class=k>Liquidado del mes</div><div class=v>'+fmtN(liquidadoTotal)+'</div></div>'
+    +'</div>';
+
+  var headerBlock='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px">'
+    +'<h1>Mackinlay\u2019s \u2014 Simulador de Fondos \xb7 Registros Automotores</h1>'
+    +'<div class=meta>Generado: '+new Date().toLocaleDateString('es-AR')+'</div>'
     +'</div>'
-    +'<div style="font-size:48px;font-weight:700;color:#b8922e;letter-spacing:-2px">'+fmtN(netaTotal*12)+'</div>'
-    +'</div>'
-    +'<h2>Detalle de operaciones</h2>'
-    +tabla;
+    +'<div style="border:1px solid rgba(184,146,46,.35);border-radius:16px;background:linear-gradient(135deg,rgba(184,146,46,.10) 0%,rgba(184,146,46,.03) 100%);padding:28px 24px 22px;margin-bottom:22px">'
+    +heroBlock
+    +paramCards
+    +'</div>';
+
+  var body=headerBlock;
 
 
   // ── BLOQUE PRODUCTOR ──
@@ -1177,7 +1159,7 @@ function imprimirPDF(version){
       +'<tbody>'+comRows+'</tbody>'
       +'</table>'
       +'</div>';
-    body = prodBlock + body;
+    body = body + prodBlock;
   }
 
   var w=window.open('','_blank');
